@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>データ分析手法ガイド</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Noto Sans JP', -apple-system, sans-serif; background: #f8f7f2; color: #2c2c2a; line-height: 1.7; padding: 2rem 1rem; }
+.wrap { max-width: 1100px; margin: 0 auto; }
+h1 { font-size: 27px; font-weight: 700; margin-bottom: 0.4rem; }
+.subtitle { font-size: 14px; color: #888780; margin-bottom: 2rem; }
+.section-label { font-size: 12px; font-weight: 700; color: #185fa5; letter-spacing: 1px; margin-bottom: 0.75rem; }
+.flow-box { background: white; border: 0.5px solid #d3d1c7; border-radius: 12px; padding: 1.5rem; margin-bottom: 2.5rem; }
+.flow-q { font-size: 15px; font-weight: 500; margin-bottom: 1rem; }
+.flow-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.flow-item { border: 0.5px solid #d3d1c7; border-radius: 8px; padding: 1rem; background: #f8f7f2; cursor: pointer; transition: all 0.2s; }
+.flow-item:hover { border-color: #185fa5; background: #e6f1fb; }
+.flow-want { font-size: 13px; color: #888780; margin-bottom: 6px; }
+.flow-arrow { font-size: 12px; color: #185fa5; font-weight: 700; }
+.category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 2.5rem; }
+.category-card { background: white; border: 0.5px solid #d3d1c7; border-radius: 12px; padding: 1.25rem; cursor: pointer; transition: all 0.2s; text-align: center; }
+.category-card:hover { border-color: #b4b2a9; background: #f1efe8; }
+.category-card.active { border: 2px solid #185fa5; background: #e6f1fb; }
+.category-card.active .cat-title { color: #185fa5; }
+.cat-icon { font-size: 30px; margin-bottom: 10px; display: block; }
+.cat-title { font-weight: 500; font-size: 15px; margin: 0 0 4px; transition: color 0.2s; }
+.cat-subtitle { font-size: 12px; color: #888780; }
+.cat-intro { background: #e6f1fb; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; font-size: 14px; color: #0c447c; line-height: 1.7; }
+.compare-box { background: white; border: 0.5px solid #d3d1c7; border-radius: 10px; padding: 1.25rem; margin-bottom: 2rem; }
+.compare-title { font-size: 14px; font-weight: 600; margin-bottom: 1rem; }
+.compare-title i { color: #185fa5; margin-right: 8px; }
+.compare-table { width: 100%; font-size: 13px; border-collapse: collapse; }
+.compare-table th { background: #f1efe8; padding: 10px; text-align: left; border: 0.5px solid #d3d1c7; font-weight: 600; }
+.compare-table td { padding: 10px; border: 0.5px solid #d3d1c7; vertical-align: top; }
+.compare-table .mname { font-weight: 500; color: #185fa5; }
+.method-section { margin-bottom: 1.25rem; }
+.method-header { background: #f1efe8; border-left: 4px solid #185fa5; padding: 1.1rem 1.25rem; border-radius: 8px; cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s; }
+.method-header:hover { background: #d3d1c7; }
+.method-header h3 { margin: 0; font-size: 16px; font-weight: 500; }
+.method-tag { font-size: 11px; color: #888780; font-weight: 400; margin-left: 10px; }
+.method-icon { font-size: 17px; transition: transform 0.3s; color: #888780; }
+.method-icon.open { transform: rotate(90deg); }
+.method-content { display: none; padding: 1.5rem; background: white; border: 0.5px solid #d3d1c7; border-top: none; border-radius: 0 0 8px 8px; }
+.method-content.open { display: block; }
+.info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.info-box { background: #f8f7f2; padding: 1rem; border-radius: 8px; border: 0.5px solid #d3d1c7; }
+.info-label { font-size: 11px; color: #888780; font-weight: 700; margin-bottom: 8px; }
+.info-content { font-size: 14px; line-height: 1.6; }
+.example-section { background: #f8f7f2; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.25rem; border: 0.5px solid #d3d1c7; }
+.example-title { font-weight: 600; font-size: 14px; margin-bottom: 1rem; }
+.example-title::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #185fa5; margin-right: 8px; vertical-align: middle; }
+.badge { display: inline-block; background: #e6f1fb; color: #0c447c; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-right: 8px; margin-bottom: 6px; }
+.data-table { width: 100%; font-size: 13px; border-collapse: collapse; margin: 0.75rem 0; border: 0.5px solid #d3d1c7; }
+.data-table th { background: #d3d1c7; padding: 10px; text-align: left; border: 0.5px solid #b4b2a9; font-weight: 600; }
+.data-table td { padding: 8px 10px; border: 0.5px solid #d3d1c7; }
+.data-table tr:nth-child(even) { background: #f8f7f2; }
+.case-study-text { font-size: 14px; line-height: 1.7; }
+.case-label { display: inline-block; background: #fac775; color: #633806; padding: 3px 9px; border-radius: 5px; font-size: 11px; font-weight: 700; margin-bottom: 8px; }
+@media (max-width: 768px) { .category-grid, .flow-grid { grid-template-columns: repeat(2, 1fr); } .info-grid { grid-template-columns: 1fr; } h1 { font-size: 23px; } .compare-box { overflow-x: auto; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>データ分析手法ガイド</h1>
+  <p class="subtitle">分析目的から手法を選ぶ ─ 目的・データ・出力・活用場面で理解する4つの分析アプローチ</p>
+  <div class="section-label"><i class="fas fa-route"></i> まず分析目的を選ぶ</div>
+  <div class="flow-box">
+    <div class="flow-q">解決したい課題は、次のどれに当てはまりますか？</div>
+    <div class="flow-grid">
+      <div class="flow-item" data-jump="prediction"><div class="flow-want">「来期の売上はいくら？」</div><div class="flow-arrow">→ 絶対値予測</div></div>
+      <div class="flow-item" data-jump="ranking"><div class="flow-want">「どれを優先すべき？」</div><div class="flow-arrow">→ 順位予測</div></div>
+      <div class="flow-item" data-jump="classification"><div class="flow-want">「これはどのグループ？」</div><div class="flow-arrow">→ 分類</div></div>
+      <div class="flow-item" data-jump="optimization"><div class="flow-want">「最適な条件は？」</div><div class="flow-arrow">→ 最適化</div></div>
+    </div>
+  </div>
+  <div class="section-label"><i class="fas fa-layer-group"></i> 4つの分析アプローチ</div>
+  <div class="category-grid" id="categoryGrid">
+    <div class="category-card active" data-category="prediction"><span class="cat-icon">📈</span><h3 class="cat-title">絶対値予測</h3><p class="cat-subtitle">数値を予測する</p></div>
+    <div class="category-card" data-category="ranking"><span class="cat-icon">🏆</span><h3 class="cat-title">順位予測</h3><p class="cat-subtitle">優先順位を付ける</p></div>
+    <div class="category-card" data-category="classification"><span class="cat-icon">🎯</span><h3 class="cat-title">分類</h3><p class="cat-subtitle">カテゴリ分けする</p></div>
+    <div class="category-card" data-category="optimization"><span class="cat-icon">⚙️</span><h3 class="cat-title">最適化</h3><p class="cat-subtitle">最適条件を探す</p></div>
+  </div>
+  <div class="content-area" id="contentArea"></div>
+</div>
+<script>
+const data = {
+  prediction: {
+    intro: "「<b>いくつになるか</b>」という連続的な数値を予測します。来期売上、需要量、価格、所要時間など、結果が数値で表せる場合に使います。説明変数（原因）が<b>数値か、カテゴリか</b>で手法を選び分けるのがポイントです。",
+    compare: { headers: ["手法", "説明変数のタイプ", "選ぶ理由"], rows: [
+      ["回帰分析", "数値（量的データ）", "面積・距離・年数など数値で測れる要因が中心のとき"],
+      ["数量化I類", "カテゴリ（質的データ）", "季節・地域・商品区分などカテゴリが中心のとき"] ] },
+    methods: [
+      { name: "回帰分析", tag: "数値データから数値を予測",
+        purpose: "数値の原因指標から、数値の結果を予測する最も基本的な手法",
+        input: "1つの結果指標（数値）＋複数の原因指標（数値）",
+        output: "予測式・各要因の影響度（係数）・予測値",
+        usecase: "売上予測、価格推定、需要予測。各要因が結果に与える影響の大きさも測れる",
+        dataExample: { title: "不動産価格の予測", target: "物件価格（万円）", variables: ["築年数（年）","面積（㎡）","駅徒歩（分）","階数"],
+          example: [ {"築年数":10,"面積":80,"駅徒歩":5,"階数":5,"価格":3200},{"築年数":25,"面積":65,"駅徒歩":15,"階数":2,"価格":2100},{"築年数":5,"面積":100,"駅徒歩":2,"階数":8,"価格":4500} ] },
+        caseStudy: "駅徒歩が10分縮まると価格は約400万円上昇、築年数が10年進むと約300万円下落、という形で各要因の金額的インパクトを定量化できる。価格査定の根拠説明に活用。" },
+      { name: "数量化I類", tag: "カテゴリから数値を予測",
+        purpose: "カテゴリ（質的）の原因指標から、数値の結果を予測する手法",
+        input: "1つの結果指標（数値）＋複数の原因指標（カテゴリ）",
+        output: "各カテゴリのスコア・予測値",
+        usecase: "季節・地域・チャネルなど、数値化しにくいカテゴリ要因から売上などを予測する場合",
+        dataExample: { title: "商品売上の予測", target: "売上（万円）", variables: ["商品カテゴリ","季節","販売チャネル"],
+          example: [ {"商品カテゴリ":"衣料品","季節":"夏","販売チャネル":"店舗","売上":450},{"商品カテゴリ":"食品","季節":"冬","販売チャネル":"EC","売上":680},{"商品カテゴリ":"衣料品","季節":"冬","販売チャネル":"店舗","売上":720} ] },
+        caseStudy: "「冬」は「夏」より売上を平均270万円押し上げ、「EC」は「店舗」より120万円高い、とカテゴリごとの貢献度を数値化。販促計画の優先順位付けに活用。" }
+    ] },
+  ranking: {
+    intro: "「<b>どれを優先すべきか</b>」という相対的な順序を予測します。数値そのものよりも、対象同士の<b>優劣・順番</b>を知りたいときに使います。検索結果の並び順、見込み顧客の優先順位、候補の絞り込みが代表例です。",
+    compare: { headers: ["手法", "得意なこと", "選ぶ理由"], rows: [
+      ["スコアリング型ランキング", "シンプルな点数化と並び替え", "評価軸が明確で、説明しやすさを重視するとき"],
+      ["ランキング学習（機械学習型）", "複雑な要因の組合せ最適化", "要因が多く、過去の「正しい順位」データがあるとき"] ] },
+    methods: [
+      { name: "スコアリング型ランキング", tag: "重み付けで点数化して並べる",
+        purpose: "複数の評価軸を重み付けして合計し、対象を順位付けする手法",
+        input: "複数の評価指標＋各指標の重要度（重み）",
+        output: "総合スコア・優先順位",
+        usecase: "見込み顧客の優先付け（リードスコアリング）、案件の優先順位。基準が透明で説明しやすい",
+        dataExample: { title: "見込み顧客の優先順位付け", target: "アプローチ優先順位", variables: ["予算規模","検討度","接触頻度","総合スコア"],
+          example: [ {"予算規模":40,"検討度":35,"接触頻度":20,"総合スコア":95,"優先":1},{"予算規模":30,"検討度":25,"接触頻度":15,"総合スコア":70,"優先":2},{"予算規模":20,"検討度":15,"接触頻度":10,"総合スコア":45,"優先":3} ] },
+        caseStudy: "限られた営業リソースを上位顧客に集中。スコア上位30%へ優先アプローチすることで、同じ工数で成約数が1.5倍に。スコア内訳も示せるため営業現場の納得感が高い。" },
+      { name: "ランキング学習", tag: "過去の正解順位から学習",
+        purpose: "過去の「正しい順位」を学習し、複雑な要因から最適な順序を予測する機械学習手法",
+        input: "複数の特徴量＋過去の正解順位データ",
+        output: "予測スコア・予測順位",
+        usecase: "検索結果やレコメンドの並び替え、多数候補の自動順位付け。人手のルールでは限界がある場合",
+        dataExample: { title: "検索結果の表示順最適化", target: "表示順位（クリックされやすい順）", variables: ["関連度","人気度","鮮度（日）","過去CTR(%)"],
+          example: [ {"関連度":92,"人気度":85,"鮮度":3,"過去CTR":12.5,"順位":1},{"関連度":88,"人気度":60,"鮮度":30,"過去CTR":8.2,"順位":2},{"関連度":78,"人気度":90,"鮮度":120,"過去CTR":6.1,"順位":4} ] },
+        caseStudy: "関連度だけでなく鮮度や過去の反応も加味した並び替えで、上位表示のクリック率が従来比18%向上。人手では扱いきれない要因の組合せを自動で最適化。" }
+    ] },
+  classification: {
+    intro: "「<b>どのグループに属するか</b>」を判定します。結果が数値ではなく<b>カテゴリ</b>（良品/不良品、継続/離脱、A/B/Cランクなど）の場合に使います。グループの数と説明変数のタイプで手法を選びます。",
+    compare: { headers: ["手法", "分類数 / データ", "選ぶ理由"], rows: [
+      ["ロジスティック回帰", "2分類中心 / 数値・カテゴリ混在", "「離脱する確率は何%か」と確率で示したいとき"],
+      ["判別分析", "多分類対応 / 数値中心", "VIP/標準/一般など複数グループに振り分けるとき"],
+      ["数量化II類", "多分類対応 / カテゴリのみ", "アンケート属性など数値データが無いとき"] ] },
+    methods: [
+      { name: "ロジスティック回帰", tag: "確率で2分類を予測",
+        purpose: "結果が起きる確率を予測し、2つのカテゴリに分類する手法",
+        input: "1つの結果指標（2カテゴリ）＋複数の原因指標（数値・カテゴリ混在）",
+        output: "判別式・該当確率（%）・分類結果",
+        usecase: "顧客離脱予測、良品/不良品判定、与信判断。「○%の確率で離脱」と確率で表せるのが強み",
+        dataExample: { title: "顧客の離脱予測", target: "継続 / 離脱", variables: ["契約期間（月）","月額（千円）","サポート利用（回）","ログイン頻度"],
+          example: [ {"契約期間":24,"月額":5,"サポート利用":3,"ログイン頻度":"高","結果":"継続"},{"契約期間":6,"月額":8,"サポート利用":0,"ログイン頻度":"低","結果":"離脱"},{"契約期間":18,"月額":3,"サポート利用":5,"ログイン頻度":"高","結果":"継続"} ] },
+        caseStudy: "「ログイン頻度が低い顧客は離脱確率75%」と確率で示せるため、危険水準の顧客を自動抽出してフォロー施策を打てる。離脱を約20%削減した実績も。" },
+      { name: "判別分析", tag: "複数グループへ振り分け",
+        purpose: "数値の説明変数から、複数のグループのどれに属するかを判別する手法",
+        input: "複数グループの所属データ＋説明変数（数値中心）",
+        output: "判別式・グループ所属",
+        usecase: "顧客セグメント判定、製品等級分類など。3つ以上のグループ分けに対応し、解釈性も高い",
+        dataExample: { title: "顧客セグメントの判定", target: "VIP / 標準 / 一般", variables: ["年間購買額（万円）","購買頻度（回/年）","利用期間（年）"],
+          example: [ {"年間購買額":500,"購買頻度":8,"利用期間":3,"セグメント":"VIP"},{"年間購買額":150,"購買頻度":2,"利用期間":1,"セグメント":"標準"},{"年間購買額":50,"購買頻度":0.5,"利用期間":0.2,"セグメント":"一般"} ] },
+        caseStudy: "新規顧客でも初期の購買行動からVIP候補を80%の精度で予測。早期に手厚いフォローを行うことで、優良顧客への育成率を高められる。" },
+      { name: "数量化II類", tag: "カテゴリだけで分類",
+        purpose: "カテゴリ（質的）の説明変数のみから、グループを判別する手法",
+        input: "複数グループの所属データ＋説明変数（カテゴリのみ）",
+        output: "各カテゴリのスコア・グループ所属",
+        usecase: "アンケート属性（年代・職業・地域など）から顧客タイプを推定。数値データが取れない場合に有効",
+        dataExample: { title: "顧客ニーズタイプの判定", target: "コスト重視 / 品質重視 / 速度重視", variables: ["年代","職業","地域","購入チャネル"],
+          example: [ {"年代":"20代","職業":"IT","地域":"都市","購入チャネル":"EC","ニーズ":"速度重視"},{"年代":"50代","職業":"製造","地域":"地方","購入チャネル":"店舗","ニーズ":"品質重視"},{"年代":"30代","職業":"営業","地域":"都市","購入チャネル":"EC","ニーズ":"コスト重視"} ] },
+        caseStudy: "属性アンケートだけからニーズタイプを推定し、タイプ別に訴求メッセージや価格プランを出し分け。購買率が従来比1.8倍に向上。" }
+    ] },
+  optimization: {
+    intro: "「<b>最も良い条件は何か</b>」を探索します。予測や分類が「現状を当てる」のに対し、最適化は<b>結果が最良になる入力条件そのものを見つける</b>のが目的です。製造条件、予算配分、パラメータ調整などに使います。",
+    compare: { headers: ["手法", "得意な状況", "選ぶ理由"], rows: [
+      ["遺伝的アルゴリズム", "複雑・非線形な組合せ", "条件が多く、数式で解けない複雑な最適化のとき"],
+      ["線形 / 非線形計画法", "制約が明確な配分問題", "予算や資源の配分など、根拠の透明性が要るとき"],
+      ["ベイズ最適化", "1回の試行が高コスト", "実験やAI学習など、試行回数を最小化したいとき"] ] },
+    methods: [
+      { name: "遺伝的アルゴリズム", tag: "進化のしくみで最適解を探索",
+        purpose: "生物の進化を模した方法で、複雑な条件下の最適な組合せを効率的に探す手法",
+        input: "調整したい複数の条件＋制約＋良さを測る評価関数",
+        output: "最適な条件の組合せ・最適値",
+        usecase: "製造パラメータ（温度・時間・圧力）の最適化など。全パターン試せないほど組合せが多い場合に有効",
+        dataExample: { title: "製造プロセスの最適化", target: "歩留率（%）の最大化", variables: ["温度（℃）","時間（分）","圧力（MPa）","湿度（%）"],
+          example: [ {"温度":85,"時間":45,"圧力":3.2,"湿度":60,"歩留率":94.5},{"温度":90,"時間":50,"圧力":3.5,"湿度":55,"歩留率":96.2},{"温度":88,"時間":48,"圧力":3.3,"湿度":58,"歩留率":97.1} ] },
+        caseStudy: "膨大な条件の組合せから最適点（温度88℃・時間48分）を効率的に発見。人手の試行錯誤より早く歩留率を92%→97%へ改善し、大幅なコスト削減を実現。" },
+      { name: "線形 / 非線形計画法", tag: "制約下で数学的に最適化",
+        purpose: "制約条件の下で、目的を最大化（または最小化）する配分を数学的に厳密に解く手法",
+        input: "目的関数＋制約条件＋調整範囲",
+        output: "最適な配分・最適値・各制約の影響",
+        usecase: "広告予算配分、生産計画、輸送ルート最適化。根拠の透明性が高く、経営判断の説明に向く",
+        dataExample: { title: "広告予算の最適配分", target: "ROI（売上÷費用）の最大化　※予算上限1,000万円", variables: ["TV（万円）","Web（万円）","SNS（万円）"],
+          example: [ {"TV":500,"Web":300,"SNS":200,"売上":4500,"ROI":6.43},{"TV":400,"Web":400,"SNS":300,"売上":4800,"ROI":6.86},{"TV":300,"Web":500,"SNS":400,"売上":5100,"ROI":7.29} ] },
+        caseStudy: "同じ予算でも配分を最適化するだけで売上が18%向上。最適解の算出過程が明確なため、予算配分の根拠を経営層へ論理的に説明できる。" },
+      { name: "ベイズ最適化", tag: "少ない試行で最適点を探索",
+        purpose: "1回の試行が高コストな状況で、最小の試行回数で最適解に近づく手法",
+        input: "少数の初期試行データ＋良さを測る評価関数",
+        output: "最適な条件・次に試すべき条件",
+        usecase: "AIモデルの設定調整、コストの高い実験計画、A/Bテスト効率化。試行のたびに費用や時間がかかる場合",
+        dataExample: { title: "AIモデルの設定最適化", target: "予測精度（%）の最大化", variables: ["学習率","バッチサイズ","ドロップアウト率"],
+          example: [ {"学習率":0.001,"バッチサイズ":32,"ドロップアウト率":0.5,"精度":88.3},{"学習率":0.01,"バッチサイズ":64,"ドロップアウト率":0.3,"精度":91.2},{"学習率":0.005,"バッチサイズ":48,"ドロップアウト率":0.4,"精度":92.1} ] },
+        caseStudy: "全組合せを試すと100回以上かかる調整を、わずか15回程度で最適点に到達。試行時間を約85%短縮しつつ、最終精度も向上させられた。" }
+    ] }
+};
+function renderContent(category) {
+  const d = data[category];
+  let html = `<div class="cat-intro">${d.intro}</div>`;
+  html += `<div class="compare-box"><div class="compare-title"><i class="fas fa-table-cells"></i>手法の使い分け早見表</div><table class="compare-table"><thead><tr>`;
+  d.compare.headers.forEach((h,i) => { html += `<th${i===0?' style="width:30%"':''}>${h}</th>`; });
+  html += `</tr></thead><tbody>`;
+  d.compare.rows.forEach(row => { html += `<tr>`; row.forEach((cell,i) => { html += `<td${i===0?' class="mname"':''}>${cell}</td>`; }); html += `</tr>`; });
+  html += `</tbody></table></div>`;
+  d.methods.forEach((m, idx) => {
+    const open = idx === 0;
+    html += `<div class="method-section"><div class="method-header" onclick="toggleMethod(this)"><h3>${m.name}<span class="method-tag">${m.tag}</span></h3><i class="fas fa-chevron-right method-icon ${open?'open':''}"></i></div><div class="method-content ${open?'open':''}"><div class="info-grid"><div class="info-box"><div class="info-label">分析目的</div><div class="info-content">${m.purpose}</div></div><div class="info-box"><div class="info-label">必要なインプット</div><div class="info-content">${m.input}</div></div><div class="info-box"><div class="info-label">出力される情報</div><div class="info-content">${m.output}</div></div><div class="info-box"><div class="info-label">主な活用場面</div><div class="info-content">${m.usecase}</div></div></div><div class="example-section"><div class="example-title">データ事例：${m.dataExample.title}</div><div style="margin-bottom:1rem;"><span class="badge">目的変数</span><span style="font-size:13px;">${m.dataExample.target}</span></div><div style="margin-bottom:1rem;"><span class="badge">説明変数</span><span style="font-size:13px;">${m.dataExample.variables.join(' / ')}</span></div><table class="data-table"><thead><tr>${Object.keys(m.dataExample.example[0]).map(k=>`<th>${k}</th>`).join('')}</tr></thead><tbody>${m.dataExample.example.map(r=>`<tr>${Object.values(r).map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="example-section"><span class="case-label">分析事例とビジネス成果</span><div class="case-study-text">${m.caseStudy}</div></div></div></div>`;
+  });
+  document.getElementById('contentArea').innerHTML = html;
+}
+function toggleMethod(header) { header.nextElementSibling.classList.toggle('open'); header.querySelector('.method-icon').classList.toggle('open'); }
+function selectCategory(cat) { document.querySelectorAll('.category-card').forEach(c => c.classList.toggle('active', c.dataset.category === cat)); renderContent(cat); }
+document.querySelectorAll('.category-card').forEach(card => { card.addEventListener('click', () => selectCategory(card.dataset.category)); });
+document.querySelectorAll('.flow-item').forEach(item => { item.addEventListener('click', () => { selectCategory(item.dataset.jump); document.getElementById('categoryGrid').scrollIntoView({ behavior: 'smooth', block: 'start' }); }); });
+renderContent('prediction');
+</script>
+</body>
+</html>
