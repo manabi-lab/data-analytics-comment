@@ -4,65 +4,147 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LightGBM 実務ガイド</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Noto Sans JP', -apple-system, sans-serif; background: #f8f7f2; color: #2c2c2a; line-height: 1.8; padding: 2rem 1rem; }
-.wrap { max-width: 1000px; margin: 0 auto; }
-.hero { background: linear-gradient(135deg, #185fa5, #0c447c); color: white; border-radius: 14px; padding: 2rem; margin-bottom: 2rem; }
-.hero h1 { font-size: 28px; font-weight: 700; margin-bottom: 0.5rem; }
-.hero p { font-size: 14px; opacity: 0.92; }
-.hero .chip { display: inline-block; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-top: 12px; margin-right: 6px; }
-.nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 10px; margin-bottom: 2rem; }
-.nav-item { background: white; border: 0.5px solid #d3d1c7; border-radius: 10px; padding: 1rem; cursor: pointer; transition: all 0.2s; text-align: center; }
-.nav-item:hover { border-color: #185fa5; background: #e6f1fb; }
-.nav-item.active { border: 2px solid #185fa5; background: #e6f1fb; }
-.nav-item i { font-size: 22px; color: #185fa5; margin-bottom: 6px; display: block; }
-.nav-item span { font-size: 14px; font-weight: 500; }
-.panel { display: none; }
-.panel.active { display: block; }
-.card { background: white; border: 0.5px solid #d3d1c7; border-radius: 12px; padding: 1.75rem; margin-bottom: 1.25rem; }
-.card h2 { font-size: 20px; font-weight: 700; margin-bottom: 1rem; color: #2c2c2a; display: flex; align-items: center; gap: 10px; }
-.card h2 i { color: #185fa5; }
-.card h3 { font-size: 15px; font-weight: 600; margin: 1.5rem 0 0.6rem; color: #0c447c; }
-.card p { font-size: 14.5px; margin-bottom: 0.8rem; }
-.card ul { margin: 0.5rem 0 1rem 0; padding-left: 0; list-style: none; }
-.card li { font-size: 14px; padding: 6px 0 6px 24px; position: relative; }
-.card li::before { content: '\f058'; font-family: 'Font Awesome 6 Free'; font-weight: 900; color: #185fa5; position: absolute; left: 0; font-size: 13px; }
-.highlight { background: #e6f1fb; border-radius: 8px; padding: 1rem 1.25rem; margin: 1rem 0; font-size: 14px; color: #0c447c; }
-.highlight strong { color: #0c447c; }
-.code-box { background: #2c2c2a; color: #f8f7f2; border-radius: 8px; padding: 1.1rem 1.25rem; font-family: 'SF Mono', Consolas, monospace; font-size: 13px; line-height: 1.7; margin: 1rem 0; overflow-x: auto; }
-.code-box .cmt { color: #888780; }
-.code-box .key { color: #fac775; }
-.code-box .str { color: #8fd19e; }
-.table { width: 100%; font-size: 13.5px; border-collapse: collapse; margin: 1rem 0; }
-.table th { background: #185fa5; color: white; padding: 11px; text-align: left; border: 0.5px solid #0c447c; font-weight: 600; }
-.table td { padding: 10px 11px; border: 0.5px solid #d3d1c7; vertical-align: top; }
-.table tr:nth-child(even) { background: #f8f7f2; }
-.table .obj { font-family: monospace; color: #185fa5; font-weight: 600; font-size: 12.5px; }
-.acc { border: 0.5px solid #d3d1c7; border-radius: 8px; margin-bottom: 0.75rem; overflow: hidden; }
-.acc-head { background: #f1efe8; padding: 1rem 1.25rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; transition: background 0.2s; }
-.acc-head:hover { background: #d3d1c7; }
-.acc-head h4 { font-size: 15px; font-weight: 600; margin: 0; }
-.acc-head .tag { font-size: 11px; color: #888780; font-weight: 400; margin-left: 8px; }
-.acc-icon { transition: transform 0.3s; color: #888780; }
-.acc-icon.open { transform: rotate(90deg); }
-.acc-body { display: none; padding: 1.25rem 1.5rem; background: white; }
-.acc-body.open { display: block; }
-.eval { display: inline-block; padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: 700; margin-right: 6px; }
-.eval-good { background: #d4edda; color: #155724; }
-.eval-mid { background: #fff3cd; color: #856404; }
-.eval-bad { background: #f8d7da; color: #721c24; }
-.result-label { display: inline-block; background: #fac775; color: #633806; padding: 3px 9px; border-radius: 5px; font-size: 11px; font-weight: 700; margin-bottom: 8px; }
-@media (max-width: 768px) { .nav { grid-template-columns: repeat(2,1fr); } .hero h1 { font-size: 23px; } .card { padding: 1.25rem; } }
+:root{
+  --ink:#16202e; --paper:#f5f2ea; --card:#fffdf8; --line:#e2dccb;
+  --accent:#e8590c; --accent2:#f08c00; --blue:#1971c2; --teal:#0c8599;
+  --muted:#6f6757; --good:#2f9e44; --warn:#e03131;
+  --fit:#e8590c; --pt:#1971c2;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Inter','Noto Sans JP',sans-serif;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, #fff7ee 0%, rgba(255,247,238,0) 60%),
+    var(--paper);
+  color:var(--ink); line-height:1.8; padding:26px 16px 70px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto}
+
+/* hero */
+.hero{
+  background:linear-gradient(135deg,#e8590c,#b34700);
+  color:#fff;border-radius:18px;padding:30px 32px;margin-bottom:24px;
+  box-shadow:0 18px 40px -26px rgba(179,71,0,.7);
+}
+.hero .eyebrow{font-size:11px;letter-spacing:.3em;font-weight:800;text-transform:uppercase;opacity:.85}
+.hero h1{font-size:clamp(24px,4vw,34px);font-weight:800;letter-spacing:-.01em;margin:8px 0 8px}
+.hero p{font-size:14.5px;opacity:.94;max-width:680px}
+.hero .chips{margin-top:14px}
+.hero .chip{display:inline-block;background:rgba(255,255,255,.2);padding:5px 13px;border-radius:20px;font-size:12px;margin-right:7px;font-weight:600}
+
+/* nav tabs */
+.nav{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:24px}
+@media(max-width:760px){.nav{grid-template-columns:repeat(2,1fr)}}
+.nav-item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 10px;cursor:pointer;transition:.18s;text-align:center}
+.nav-item:hover{border-color:var(--accent);transform:translateY(-2px)}
+.nav-item.active{border:2px solid var(--accent);background:#fff7ef;box-shadow:0 10px 24px -18px rgba(232,89,12,.6)}
+.nav-item i{font-size:21px;color:var(--accent);margin-bottom:7px;display:block}
+.nav-item span{font-size:13px;font-weight:700}
+
+.panel{display:none;animation:fade .35s ease}
+.panel.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px 26px;margin-bottom:16px;box-shadow:0 10px 30px -24px rgba(22,32,46,.5)}
+.card h2{font-size:21px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:11px;letter-spacing:-.01em}
+.card h2 i{color:var(--accent)}
+.card h3{font-size:15.5px;font-weight:700;margin:1.6rem 0 .6rem;color:#b34700}
+.card p{font-size:14.5px;margin-bottom:.85rem}
+.card ul{margin:.5rem 0 1rem;padding-left:0;list-style:none}
+.card li{font-size:14px;padding:6px 0 6px 26px;position:relative}
+.card li::before{content:'\f058';font-family:'Font Awesome 6 Free';font-weight:900;color:var(--accent);position:absolute;left:0;font-size:13px}
+
+.highlight{background:#fff7ef;border-left:4px solid var(--accent);border-radius:0 12px 12px 0;padding:14px 18px;margin:1rem 0;font-size:14px;color:#3c3528}
+.highlight strong{color:#b34700}
+
+.code-box{background:var(--ink);color:#f5f2ea;border-radius:10px;padding:1.1rem 1.3rem;font-family:'SF Mono',Consolas,monospace;font-size:13px;line-height:1.7;margin:1rem 0;overflow-x:auto}
+.code-box .cmt{color:#8a8270}
+.code-box .key{color:#f08c00}
+.code-box .str{color:#69db7c}
+
+.table{width:100%;font-size:13.5px;border-collapse:collapse;margin:1rem 0}
+.table th{background:var(--accent);color:#fff;padding:12px;text-align:left;border:1px solid #b34700;font-weight:700}
+.table td{padding:11px 12px;border:1px solid var(--line);vertical-align:top}
+.table tr:nth-child(even){background:var(--paper)}
+.table .obj{font-family:monospace;color:var(--accent);font-weight:700;font-size:12.5px}
+
+.acc{border:1px solid var(--line);border-radius:10px;margin-bottom:.75rem;overflow:hidden}
+.acc-head{background:var(--paper);padding:1rem 1.3rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;transition:.18s}
+.acc-head:hover{background:#f0e9d8}
+.acc-head h4{font-size:15px;font-weight:700;margin:0}
+.acc-head .tag{font-size:11px;color:var(--muted);font-weight:400;margin-left:8px}
+.acc-icon{transition:transform .3s;color:var(--muted)}
+.acc-icon.open{transform:rotate(90deg)}
+.acc-body{display:none;padding:1.3rem 1.5rem;background:#fff}
+.acc-body.open{display:block}
+
+.eval{display:inline-block;padding:3px 11px;border-radius:5px;font-size:12px;font-weight:700;margin-right:6px}
+.eval-bad{background:#ffe3e3;color:#c92a2a}
+.eval-mid{background:#fff3bf;color:#a37200}
+.result-label{display:inline-block;background:var(--accent2);color:#fff;padding:3px 10px;border-radius:5px;font-size:11px;font-weight:700;margin-bottom:8px}
+
+/* ===== interactive demo (from attachment) ===== */
+.demo-head{text-align:center;margin-bottom:20px}
+.demo-head .eyebrow{font-size:11px;letter-spacing:.3em;color:var(--accent);font-weight:800;text-transform:uppercase}
+.demo-head h2{justify-content:center;font-size:clamp(20px,3.4vw,28px);margin:7px 0 6px}
+.demo-head .sub{color:var(--muted);font-size:14px;max-width:660px;margin:0 auto}
+.board{display:grid;grid-template-columns:1.35fr 1fr;gap:18px;align-items:stretch}
+@media(max-width:840px){.board{grid-template-columns:1fr}}
+.dcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 10px 30px -22px rgba(22,32,46,.55)}
+.dcard .lbl{font-size:12px;letter-spacing:.13em;color:var(--muted);font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:8px;text-transform:uppercase}
+.dcard .lbl .d{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+canvas{width:100%;display:block;border-radius:10px}
+.controls{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:840px){.controls{grid-template-columns:1fr}}
+.ctl{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.ctl label{font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.ctl label b{color:var(--accent);font-size:15px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:9999px;background:linear-gradient(90deg,var(--accent) 0%,var(--accent) var(--p,15%),#e7e1d2 var(--p,15%),#e7e1d2 100%);cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 2px 6px rgba(0,0,0,.2);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--accent);cursor:pointer}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;min-width:72px;font-family:inherit;font-size:12.5px;font-weight:700;border:1.5px solid var(--line);background:#fff;color:var(--ink);padding:8px 6px;border-radius:9px;cursor:pointer;transition:.15s}
+.seg button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.seg button:hover{border-color:var(--accent)}
+.btnrow{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+.btnrow button{flex:1;min-width:130px;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;padding:10px 12px;border-radius:10px;border:1.5px solid var(--ink);transition:.15s;background:#fff;color:var(--ink)}
+.btnrow button:hover{border-color:var(--accent);color:var(--accent)}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.metric{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;text-align:center}
+.metric .k{font-size:11px;color:var(--muted);font-weight:700}
+.metric .v{font-size:20px;font-weight:800;margin-top:2px}
+.metric .v.train{color:var(--blue)}
+.metric .v.test{color:var(--accent)}
+.metric small{font-size:10px;color:var(--muted);display:block}
+.explain{background:#fff7ef;border-left:4px solid var(--accent);border-radius:0 12px 12px 0;padding:13px 15px;margin-top:14px}
+.explain h3{font-size:12px;letter-spacing:.06em;color:var(--accent);font-weight:800;margin:0 0 4px}
+.explain p{font-size:13.5px;color:#3c3528;margin:0}
+.explain strong{color:var(--accent)}
+.legend{display:flex;gap:16px;justify-content:center;margin-top:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:6px}
+.lchip{width:22px;height:4px;border-radius:2px}
+.lchip.r{height:12px;border-radius:3px}
+.ens-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px}
+@media(max-width:680px){.ens-grid{grid-template-columns:1fr}}
+.ebox{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--paper)}
+.ebox h4{font-size:14px;color:var(--accent);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.ebox p{font-size:13px;color:#3c3528;margin:0}
+.biz{margin-top:16px;border:1px dashed var(--accent);border-radius:12px;background:#fff7ef;padding:14px 16px}
+.biz h4{font-size:13px;color:var(--accent);font-weight:800;margin-bottom:4px}
+.biz p{font-size:13px;color:#3c3528;margin:0}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="hero">
+    <div class="eyebrow">Data Analytics Guide</div>
     <h1>LightGBM 実務ガイド</h1>
-    <p>テーブルデータ分析の主力エンジンを、仕組み・使い方・事例・限界まで体系的に理解する</p>
-    <div>
+    <p>テーブルデータ分析の主力エンジンを、仕組み・使い方・事例・限界まで体系的に理解する。決定木が非線形を捉える様子も、その場で体感できます。</p>
+    <div class="chips">
       <span class="chip">勾配ブースティング木</span>
       <span class="chip">予測・分類・順位対応</span>
       <span class="chip">高速・高精度</span>
@@ -72,17 +154,17 @@ body { font-family: 'Noto Sans JP', -apple-system, sans-serif; background: #f8f7
   <div class="nav" id="nav">
     <div class="nav-item active" data-panel="what"><i class="fas fa-circle-question"></i><span>LightGBMとは？</span></div>
     <div class="nav-item" data-panel="how"><i class="fas fa-gears"></i><span>使い方</span></div>
+    <div class="nav-item" data-panel="demo"><i class="fas fa-wand-magic-sparkles"></i><span>仕組みを体感</span></div>
     <div class="nav-item" data-panel="cases"><i class="fas fa-briefcase"></i><span>活用事例</span></div>
     <div class="nav-item" data-panel="weak"><i class="fas fa-triangle-exclamation"></i><span>苦手な分析</span></div>
   </div>
 
+  <!-- ===== WHAT ===== -->
   <div class="panel active" id="panel-what">
     <div class="card">
       <h2><i class="fas fa-circle-question"></i>LightGBMとは？</h2>
       <p>LightGBM（Light Gradient Boosting Machine）は、Microsoft が開発した「<strong>勾配ブースティング木</strong>」というアルゴリズムの一種です。たくさんの小さな決定木を順番に作り、前の木の予測の誤りを次の木が少しずつ修正していくことで、全体として高精度な予測モデルを組み上げます。</p>
-      <div class="highlight">
-        <strong>ひとことで言うと：</strong>「行と列で表せる<strong>表形式（テーブル）データ</strong>の予測・分類・順位付けにおいて、2026年時点でも主力とされる、高速かつ高精度な機械学習エンジン」です。
-      </div>
+      <div class="highlight"><strong>ひとことで言うと：</strong>「行と列で表せる<strong>表形式（テーブル）データ</strong>の予測・分類・順位付けにおいて、2026年時点でも主力とされる、高速かつ高精度な機械学習エンジン」です。</div>
       <h3>なぜ主流とされるのか</h3>
       <ul>
         <li><strong>高精度</strong>：非線形な関係や、要因同士の複雑な絡み合い（交互作用）を自動で捉える</li>
@@ -93,9 +175,11 @@ body { font-family: 'Noto Sans JP', -apple-system, sans-serif; background: #f8f7
       <p>分析コンペ（Kaggle 等）でテーブルデータ課題の上位解法を長年占めてきた実績が、その実用性を裏付けています。顧客データ・売上・製造ログなど、企業が扱う業務データの多くはこの「テーブルデータ」のため、まず第一候補に挙がる道具です。</p>
       <h3>XGBoost・CatBoost との関係</h3>
       <p>LightGBM は唯一解ではなく、同じ勾配ブースティング木の仲間に <strong>XGBoost</strong>（安定性・実績重視）と <strong>CatBoost</strong>（カテゴリ変数が非常に多いデータに強い）があります。3者は使い分けの関係で、LightGBM は特に「大規模データを高速に回す」のが強みです。</p>
+      <div class="highlight" style="border-left-color:var(--blue)"><strong style="color:var(--blue)">次のステップ：</strong>「仕組みを体感」タブで、決定木がどうやって曲がったデータを捉えるのかを、スライダーを動かしながら確認できます。LightGBM はこの決定木を何本も束ねたものです。</div>
     </div>
   </div>
 
+  <!-- ===== HOW ===== -->
   <div class="panel" id="panel-how">
     <div class="card">
       <h2><i class="fas fa-gears"></i>LightGBMの使い方</h2>
@@ -147,34 +231,103 @@ body { font-family: 'Noto Sans JP', -apple-system, sans-serif; background: #f8f7
     </div>
   </div>
 
+  <!-- ===== DEMO ===== -->
+  <div class="panel" id="panel-demo">
+    <div class="card">
+      <div class="demo-head">
+        <div class="eyebrow">直線では追えない関係を、なぜ当てられるのか</div>
+        <h2 style="display:flex"><i class="fas fa-wand-magic-sparkles"></i>決定木が「非線形」を捉える仕組み</h2>
+        <p class="sub">木の深さスライダーを動かすと、左の予測線が階段状に育ち、右に「質問の枝分かれ（=木そのもの）」が同時に描かれます。LightGBM は、この決定木を何百本も束ねたものです。</p>
+      </div>
+
+      <div class="board">
+        <div class="dcard">
+          <div class="lbl"><span class="d"></span>① データ空間 ── 予測線が階段状に育つ</div>
+          <canvas id="space"></canvas>
+          <div class="legend">
+            <span><span class="lchip" style="background:var(--pt)"></span>実データ（点）</span>
+            <span><span class="lchip" style="background:var(--fit)"></span>木の予測（階段）</span>
+            <span><span class="lchip r" style="background:rgba(232,89,12,.12)"></span>区切られた区画</span>
+          </div>
+        </div>
+        <div class="dcard">
+          <div class="lbl"><span class="d"></span>② 決定木 ── Yes/No の質問が枝分かれ</div>
+          <canvas id="tree"></canvas>
+          <div class="explain">
+            <h3>解説</h3>
+            <p id="explainText">深さ0：まだ質問ゼロ。全データの平均だけを答えるので、予測は一本の水平線です。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="ctl">
+          <label>木の深さ（質問の段数） <b id="depthV">1</b></label>
+          <input id="depth" type="range" min="0" max="8" value="1">
+          <div class="metrics">
+            <div class="metric"><div class="k">学習データ誤差</div><div class="v train" id="mTrain">–</div><small>小さいほど学習データに密着</small></div>
+            <div class="metric"><div class="k">未知データ誤差</div><div class="v test" id="mTest">–</div><small>小さいほど本当に賢い</small></div>
+          </div>
+        </div>
+        <div class="ctl">
+          <label>データの形（非線形パターン）</label>
+          <div class="seg" id="shape">
+            <button data-s="sine" class="on">波（sin）</button>
+            <button data-s="step">段差</button>
+            <button data-s="bump">山なり</button>
+            <button data-s="zig">ジグザグ</button>
+          </div>
+          <div class="btnrow">
+            <button id="regen">新しいデータを生成</button>
+            <button id="toggleR">区画を隠す</button>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:28px">1本の木の弱点を、束ねて克服する</h3>
+      <p>深さを最大まで上げると「学習データ誤差」はゼロに近づくのに「未知データ誤差」が増える瞬間があります。これが<strong style="color:var(--warn)">過学習（丸暗記）</strong>。実務でこれを抑えるのが次の2つです。</p>
+      <div class="ens-grid">
+        <div class="ebox">
+          <h4>🌲 ランダムフォレスト</h4>
+          <p>少しずつ違う木を何百本もバラバラに育て、その<strong>平均（多数決）</strong>をとる。1本が暗記した変なクセが打ち消し合い、安定して過学習しにくい。「大人数で意見をならす」イメージ。</p>
+        </div>
+        <div class="ebox">
+          <h4>⚡ LightGBM</h4>
+          <p>前の木が<strong>外した分だけ</strong>を次の木が順番に修正していく。少しずつ誤差を削るので高精度・高速で、表形式データの本命。「専門家がリレーで仕上げる」イメージ。</p>
+        </div>
+      </div>
+      <div class="biz">
+        <h4>経営の視点で一言</h4>
+        <p>決定木の強みは<strong>「年収が高く、かつ満足度も高い人だけ継続率が跳ねる」</strong>といった条件の掛け合わせを、人が仮説を立てなくても自動で発見できること。直線モデルでは見えない“現場の肌感覚”をデータから拾い上げます。一方で深くしすぎると過去データの偶然まで覚えてしまうため、森（アンサンブル）で平らにならすのが定石です。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CASES ===== -->
   <div class="panel" id="panel-cases">
     <div class="card">
       <h2><i class="fas fa-briefcase"></i>LightGBMの活用事例</h2>
       <p>4つの分析目的に対応する具体的なビジネス事例です。それぞれ目的変数・説明変数・成果のイメージを示します。</p>
-
-      <h3><i class="fas fa-chart-line" style="color:#185fa5;margin-right:6px;"></i>事例1：不動産価格の予測（絶対値予測）</h3>
+      <h3><i class="fas fa-chart-line" style="color:var(--accent);margin-right:6px;"></i>事例1：不動産価格の予測（絶対値予測）</h3>
       <p><strong>目的変数：</strong>物件価格　／　<strong>説明変数：</strong>築年数・面積・駅徒歩・階数</p>
       <p><span class="result-label">成果</span>各要因の金額インパクトを定量化しつつ、線形回帰では捉えられない「立地と築年数の相互作用」を反映。価格査定の精度が向上し、根拠説明にも活用。</p>
-
-      <h3><i class="fas fa-trophy" style="color:#185fa5;margin-right:6px;"></i>事例2：ボートレース着順予測（順位予測）</h3>
+      <h3><i class="fas fa-trophy" style="color:var(--accent);margin-right:6px;"></i>事例2：ボートレース着順予測（順位予測）</h3>
       <p><strong>目的変数：</strong>レース内着順　／　<strong>説明変数：</strong>選手成績・モーター性能・展示タイム・コース</p>
       <p><span class="result-label">成果</span><code>lambdarank</code> でレース単位の順位を直接最適化。各艇の着順確率を <code>multiclass</code> で出して組み合わせるハイブリッドで、3連単的中の精度向上を狙える。</p>
-
-      <h3><i class="fas fa-users" style="color:#185fa5;margin-right:6px;"></i>事例3：顧客離脱予測（分類）</h3>
+      <h3><i class="fas fa-users" style="color:var(--accent);margin-right:6px;"></i>事例3：顧客離脱予測（分類）</h3>
       <p><strong>目的変数：</strong>継続/離脱　／　<strong>説明変数：</strong>契約期間・月額・サポート利用・ログイン頻度</p>
       <p><span class="result-label">成果</span>「離脱確率75%」と確率で示せるため、危険水準の顧客を自動抽出。早期フォローで離脱削減につなげられる。</p>
-
-      <h3><i class="fas fa-industry" style="color:#185fa5;margin-right:6px;"></i>事例4：製造プロセス最適化（最適化の代理モデル）</h3>
+      <h3><i class="fas fa-industry" style="color:var(--accent);margin-right:6px;"></i>事例4：製造プロセス最適化（最適化の代理モデル）</h3>
       <p><strong>目的変数：</strong>歩留率　／　<strong>説明変数：</strong>温度・時間・圧力・湿度</p>
       <p><span class="result-label">成果</span>「条件→歩留率」を LightGBM で学習し、その上でベイズ最適化が最適点を探索。実機の試行回数を抑えつつ最適条件を発見。</p>
     </div>
   </div>
 
+  <!-- ===== WEAK ===== -->
   <div class="panel" id="panel-weak">
     <div class="card">
       <h2><i class="fas fa-triangle-exclamation"></i>LightGBMが苦手な分析</h2>
       <p>「主流」と「万能」は別物です。LightGBM が適用しづらい・不向きな場面を理解しておくことが、誤用を防ぐ鍵になります。</p>
-
       <table class="table">
         <thead><tr><th style="width:30%">苦手な領域</th><th style="width:14%">適性</th><th>代わりに検討する手法</th></tr></thead>
         <tbody>
@@ -186,35 +339,105 @@ body { font-family: 'Noto Sans JP', -apple-system, sans-serif; background: #f8f7
           <tr><td>超低遅延・極小環境での推論</td><td><span class="eval eval-mid">要検討</span></td><td>軽量な線形モデル</td></tr>
         </tbody>
       </table>
-
       <h3>特に押さえるべき3つの限界</h3>
       <ul>
         <li><strong>非構造化データは土俵が違う</strong>：画像分類や文章生成はディープラーニングの領域。音声認識（ElevenLabs等）や文章理解もこちら側で、LightGBM を直接当てるのは筋が悪い</li>
         <li><strong>少数データでは過学習しやすい</strong>：木を多数育てる性質上、サンプルが少ないと単純な線形モデルの方が安定し、解釈もしやすい</li>
         <li><strong>ブラックボックス寄り</strong>：特徴量重要度やSHAPで補えるが、規制・監査で判断根拠の明示が義務づけられる領域では、あえて線形モデルを選ぶことがある</li>
       </ul>
-
-      <div class="highlight">
-        <strong>判断基準（研修で使える一言）：</strong>「テーブルデータの予測・分類・順位なら、まず LightGBM を試すのが2026年でも合理的なデフォルト。ただし①画像や文章などの非構造化データ、②データが極端に少ない、③判断根拠の説明が法的に必須、のどれかに当たるなら別の道具を選ぶ」
-      </div>
+      <div class="highlight"><strong>判断基準（研修で使える一言）：</strong>「テーブルデータの予測・分類・順位なら、まず LightGBM を試すのが2026年でも合理的なデフォルト。ただし①画像や文章などの非構造化データ、②データが極端に少ない、③判断根拠の説明が法的に必須、のどれかに当たるなら別の道具を選ぶ」</div>
       <p style="margin-bottom:0;">万能の銀の弾丸はなく、<strong>データの形と説明責任の重さで道具を選ぶ</strong>——これが本質です。</p>
     </div>
   </div>
 </div>
 
 <script>
-document.querySelectorAll('.nav-item').forEach(item => {
-  item.addEventListener('click', () => {
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+/* ===== tab switching ===== */
+let demoInitialized=false;
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
     item.classList.add('active');
-    document.getElementById('panel-' + item.dataset.panel).classList.add('active');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('panel-'+item.dataset.panel).classList.add('active');
+    window.scrollTo({top:0,behavior:'smooth'});
+    if(item.dataset.panel==='demo'&&!demoInitialized){demoInitialized=true;setTimeout(initDemo,60);}
   });
 });
-function toggleAcc(head) {
-  head.nextElementSibling.classList.toggle('open');
-  head.querySelector('.acc-icon').classList.toggle('open');
+function toggleAcc(head){head.nextElementSibling.classList.toggle('open');head.querySelector('.acc-icon').classList.toggle('open');}
+
+/* ===================== DEMO ===================== */
+const W=10, Y=2;
+let shape='sine', showR=true, train=[], test=[];
+function f(x,s){switch(s){
+  case 'sine':return Math.sin(x)*1.2;
+  case 'step':return x<3?-1.1:x<6?0.4:1.1;
+  case 'bump':return 1.5*Math.exp(-Math.pow(x-5,2)/2.2)-0.6;
+  case 'zig':{const t=x%4;return (t<2?t-1:3-t)*1.1;}
+}}
+function genData(){train=[];test=[];
+  for(let i=0;i<160;i++){const x=Math.random()*W;train.push({x,y:f(x,shape)+(Math.random()-0.5)*0.6});}
+  for(let i=0;i<120;i++){const x=Math.random()*W;test.push({x,y:f(x,shape)+(Math.random()-0.5)*0.6});}}
+function Leaf(d){this.leaf=true;this.pred=d.reduce((s,p)=>s+p.y,0)/d.length;this.n=d.length;}
+function mse(d){if(!d.length)return 0;const m=d.reduce((s,p)=>s+p.y,0)/d.length;return d.reduce((s,p)=>s+(p.y-m)**2,0)/d.length;}
+function bestSplit(d){const xs=d.map(p=>p.x).sort((a,b)=>a-b);let best={score:Infinity};
+  for(let i=4;i<xs.length-4;i+=2){const v=(xs[i]+xs[i+1])/2;const L=d.filter(p=>p.x<v),R=d.filter(p=>p.x>=v);
+  if(L.length<4||R.length<4)continue;const sc=mse(L)*L.length+mse(R)*R.length;if(sc<best.score)best={score:sc,value:v};}return best;}
+function build(d,depth){if(depth===0||d.length<8)return new Leaf(d);const s=bestSplit(d);if(s.score===Infinity)return new Leaf(d);
+  return {leaf:false,value:s.value,left:build(d.filter(p=>p.x<s.value),depth-1),right:build(d.filter(p=>p.x>=s.value),depth-1)};}
+function predict(tree,x){let n=tree;while(!n.leaf){n=x<n.value?n.left:n.right;}return n.pred;}
+function evalErr(tree,d){return Math.sqrt(d.reduce((s,p)=>s+(p.y-predict(tree,p.x))**2,0)/d.length);}
+function segments(tree,xmin,xmax,out){if(tree.leaf){out.push([xmin,xmax,tree.pred]);return;}segments(tree.left,xmin,tree.value,out);segments(tree.right,tree.value,xmax,out);}
+
+let cS,xS,cT,xT;
+function fit(c){const w=c.parentElement.clientWidth-32;c.width=w;c.height=Math.round(w*0.62);}
+function mx(x,c){return 36+(x/W)*(c.width-50);}
+function my(y,c){return c.height-20-((y+Y)/(2*Y))*(c.height-40);}
+let animSegs=[],targetSegs=[],animStart=0,dur=480,raf=null;
+function drawSpace(segsNow){const c=cS,g=xS;g.clearRect(0,0,c.width,c.height);
+  g.strokeStyle='#ded7c6';g.lineWidth=1;g.beginPath();g.moveTo(36,my(0,c));g.lineTo(c.width-14,my(0,c));g.stroke();
+  if(showR){segsNow.forEach((s,i)=>{g.fillStyle=i%2?'rgba(232,89,12,.07)':'rgba(232,89,12,.13)';g.fillRect(mx(s[0],c),20,mx(s[1],c)-mx(s[0],c),c.height-40);});}
+  g.fillStyle='rgba(25,113,194,.62)';train.forEach(p=>{g.beginPath();g.arc(mx(p.x,c),my(p.y,c),3,0,7);g.fill();});
+  g.strokeStyle='#e8590c';g.lineWidth=3.5;g.lineJoin='round';
+  segsNow.forEach(s=>{const y=my(s[2],c);g.beginPath();g.moveTo(mx(s[0],c),y);g.lineTo(mx(s[1],c),y);g.stroke();});
+  g.strokeStyle='rgba(232,89,12,.45)';g.lineWidth=1.5;
+  for(let i=0;i<segsNow.length-1;i++){const xv=mx(segsNow[i][1],c);g.beginPath();g.moveTo(xv,my(segsNow[i][2],c));g.lineTo(xv,my(segsNow[i+1][2],c));g.stroke();}}
+function drawTree(tree,depth){const c=cT,g=xT;g.clearRect(0,0,c.width,c.height);
+  if(depth===0){roundRect(g,c.width/2-60,c.height/2-18,120,36,'#fff','#e8590c',2.5);g.fillStyle='#16202e';g.font='600 13px Inter,Noto Sans JP';g.textAlign='center';g.fillText('平均を予測',c.width/2,c.height/2+5);return;}
+  const levels=Math.min(depth,4),topY=26,gapY=(c.height-50)/levels;
+  function node(t,d,x,w){const y=topY+d*gapY;
+    if(t.leaf||d===levels){roundRect(g,x-26,y-12,52,24,'#fff7ef','#e8590c',1.5);g.fillStyle='#b34700';g.font='700 10px Inter';g.textAlign='center';g.fillText(t.leaf?t.pred.toFixed(2):'…',x,y+4);return;}
+    roundRect(g,x-44,y-13,88,26,'#fff',d===0?'#e8590c':'#16202e',d===0?2.5:1.5);g.fillStyle='#16202e';g.font='600 10.5px Inter,Noto Sans JP';g.textAlign='center';g.fillText('x < '+t.value.toFixed(1)+' ?',x,y+4);
+    const cw=w/2,lx=x-cw/2,rx=x+cw/2,cy=topY+(d+1)*gapY;
+    g.strokeStyle='#cfc7b4';g.lineWidth=1.6;edge(g,x,y+13,lx,cy-13);edge(g,x,y+13,rx,cy-13);
+    g.fillStyle='#8a8270';g.font='700 9px Inter';g.fillText('Yes',(x+lx)/2-8,(y+cy)/2);g.fillText('No',(x+rx)/2+8,(y+cy)/2);
+    node(t.left,d+1,lx,cw);node(t.right,d+1,rx,cw);}
+  node(tree,0,c.width/2,c.width-30);}
+function edge(g,x1,y1,x2,y2){g.beginPath();g.moveTo(x1,y1);g.bezierCurveTo(x1,(y1+y2)/2,x2,(y1+y2)/2,x2,y2);g.stroke();}
+function roundRect(g,x,y,w,h,fill,stroke,lw){const r=7;g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();g.fillStyle=fill;g.fill();g.strokeStyle=stroke;g.lineWidth=lw;g.stroke();}
+function sampleAt(segs,x){for(const s of segs)if(x>=s[0]&&x<=s[1])return s[2];return segs[segs.length-1][2];}
+function buildAnimFrame(t){const fromOld=animSegs,toNew=targetSegs,merged=[];
+  toNew.forEach(s=>{const xm=(s[0]+s[1])/2;const oldY=fromOld.length?sampleAt(fromOld,xm):0;merged.push([s[0],s[1],oldY+(s[2]-oldY)*t]);});return merged;}
+function animate(){cancelAnimationFrame(raf);animStart=performance.now();
+  (function step(now){const t=Math.min(1,(now-animStart)/dur);const e=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;drawSpace(buildAnimFrame(e));if(t<1)raf=requestAnimationFrame(step);else animSegs=targetSegs.slice();})(animStart);}
+function recompute(depth){const tree=build(train,depth);const out=[];segments(tree,0,W,out);out.sort((a,b)=>a[0]-b[0]);targetSegs=out;drawTree(tree,depth);animate();
+  const tr=evalErr(tree,train),te=evalErr(tree,test);
+  document.getElementById('mTrain').textContent=tr.toFixed(3);document.getElementById('mTest').textContent=te.toFixed(3);document.getElementById('depthV').textContent=depth;
+  let txt;if(depth===0)txt='深さ0：まだ質問ゼロ。全データの平均だけを答えるので、予測は一本の水平線です。';
+  else if(depth<=2)txt='質問が増え、空間が区画に分かれました。各区画の平均値で答えるので、予測線が<strong>階段状</strong>になります。';
+  else if(depth<=5)txt='段数が増えるほど階段が細かくなり、曲がったデータに<strong>ぴたりと寄り添って</strong>いきます。';
+  else txt='深すぎる状態。学習データ誤差はほぼゼロですが、<strong>未知データ誤差は逆に増加</strong>。点のノイズまで暗記する<strong style="color:#e03131">過学習</strong>が起きています。';
+  document.getElementById('explainText').innerHTML=txt;
+  document.getElementById('mTest').style.color=(te>tr*1.6)?'#e03131':'#e8590c';}
+function refreshSlider(){const s=document.getElementById('depth');s.style.setProperty('--p',(s.value/8*100)+'%');}
+function initDemo(){
+  cS=document.getElementById('space');xS=cS.getContext('2d');cT=document.getElementById('tree');xT=cT.getContext('2d');
+  document.getElementById('depth').addEventListener('input',e=>{refreshSlider();recompute(+e.target.value);});
+  document.getElementById('regen').addEventListener('click',()=>{genData();recompute(+document.getElementById('depth').value);});
+  document.getElementById('toggleR').addEventListener('click',e=>{showR=!showR;e.target.textContent=showR?'区画を隠す':'区画を表示';recompute(+document.getElementById('depth').value);});
+  document.querySelectorAll('#shape button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#shape button').forEach(x=>x.classList.remove('on'));b.classList.add('on');shape=b.dataset.s;genData();recompute(+document.getElementById('depth').value);}));
+  window.addEventListener('resize',()=>{if(!cS)return;fit(cS);fit(cT);animSegs=targetSegs;drawSpace(targetSegs);drawTree(build(train,+document.getElementById('depth').value),+document.getElementById('depth').value);});
+  fit(cS);fit(cT);refreshSlider();genData();recompute(1);
 }
 </script>
 </body>
