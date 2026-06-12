@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LightGBM 実務ガイド</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Noto Sans JP', -apple-system, sans-serif; background: #f8f7f2; color: #2c2c2a; line-height: 1.8; padding: 2rem 1rem; }
+.wrap { max-width: 1000px; margin: 0 auto; }
+.hero { background: linear-gradient(135deg, #185fa5, #0c447c); color: white; border-radius: 14px; padding: 2rem; margin-bottom: 2rem; }
+.hero h1 { font-size: 28px; font-weight: 700; margin-bottom: 0.5rem; }
+.hero p { font-size: 14px; opacity: 0.92; }
+.hero .chip { display: inline-block; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-top: 12px; margin-right: 6px; }
+.nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 10px; margin-bottom: 2rem; }
+.nav-item { background: white; border: 0.5px solid #d3d1c7; border-radius: 10px; padding: 1rem; cursor: pointer; transition: all 0.2s; text-align: center; }
+.nav-item:hover { border-color: #185fa5; background: #e6f1fb; }
+.nav-item.active { border: 2px solid #185fa5; background: #e6f1fb; }
+.nav-item i { font-size: 22px; color: #185fa5; margin-bottom: 6px; display: block; }
+.nav-item span { font-size: 14px; font-weight: 500; }
+.panel { display: none; }
+.panel.active { display: block; }
+.card { background: white; border: 0.5px solid #d3d1c7; border-radius: 12px; padding: 1.75rem; margin-bottom: 1.25rem; }
+.card h2 { font-size: 20px; font-weight: 700; margin-bottom: 1rem; color: #2c2c2a; display: flex; align-items: center; gap: 10px; }
+.card h2 i { color: #185fa5; }
+.card h3 { font-size: 15px; font-weight: 600; margin: 1.5rem 0 0.6rem; color: #0c447c; }
+.card p { font-size: 14.5px; margin-bottom: 0.8rem; }
+.card ul { margin: 0.5rem 0 1rem 0; padding-left: 0; list-style: none; }
+.card li { font-size: 14px; padding: 6px 0 6px 24px; position: relative; }
+.card li::before { content: '\f058'; font-family: 'Font Awesome 6 Free'; font-weight: 900; color: #185fa5; position: absolute; left: 0; font-size: 13px; }
+.highlight { background: #e6f1fb; border-radius: 8px; padding: 1rem 1.25rem; margin: 1rem 0; font-size: 14px; color: #0c447c; }
+.highlight strong { color: #0c447c; }
+.code-box { background: #2c2c2a; color: #f8f7f2; border-radius: 8px; padding: 1.1rem 1.25rem; font-family: 'SF Mono', Consolas, monospace; font-size: 13px; line-height: 1.7; margin: 1rem 0; overflow-x: auto; }
+.code-box .cmt { color: #888780; }
+.code-box .key { color: #fac775; }
+.code-box .str { color: #8fd19e; }
+.table { width: 100%; font-size: 13.5px; border-collapse: collapse; margin: 1rem 0; }
+.table th { background: #185fa5; color: white; padding: 11px; text-align: left; border: 0.5px solid #0c447c; font-weight: 600; }
+.table td { padding: 10px 11px; border: 0.5px solid #d3d1c7; vertical-align: top; }
+.table tr:nth-child(even) { background: #f8f7f2; }
+.table .obj { font-family: monospace; color: #185fa5; font-weight: 600; font-size: 12.5px; }
+.acc { border: 0.5px solid #d3d1c7; border-radius: 8px; margin-bottom: 0.75rem; overflow: hidden; }
+.acc-head { background: #f1efe8; padding: 1rem 1.25rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; transition: background 0.2s; }
+.acc-head:hover { background: #d3d1c7; }
+.acc-head h4 { font-size: 15px; font-weight: 600; margin: 0; }
+.acc-head .tag { font-size: 11px; color: #888780; font-weight: 400; margin-left: 8px; }
+.acc-icon { transition: transform 0.3s; color: #888780; }
+.acc-icon.open { transform: rotate(90deg); }
+.acc-body { display: none; padding: 1.25rem 1.5rem; background: white; }
+.acc-body.open { display: block; }
+.eval { display: inline-block; padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: 700; margin-right: 6px; }
+.eval-good { background: #d4edda; color: #155724; }
+.eval-mid { background: #fff3cd; color: #856404; }
+.eval-bad { background: #f8d7da; color: #721c24; }
+.result-label { display: inline-block; background: #fac775; color: #633806; padding: 3px 9px; border-radius: 5px; font-size: 11px; font-weight: 700; margin-bottom: 8px; }
+@media (max-width: 768px) { .nav { grid-template-columns: repeat(2,1fr); } .hero h1 { font-size: 23px; } .card { padding: 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1>LightGBM 実務ガイド</h1>
+    <p>テーブルデータ分析の主力エンジンを、仕組み・使い方・事例・限界まで体系的に理解する</p>
+    <div>
+      <span class="chip">勾配ブースティング木</span>
+      <span class="chip">予測・分類・順位対応</span>
+      <span class="chip">高速・高精度</span>
+    </div>
+  </div>
+
+  <div class="nav" id="nav">
+    <div class="nav-item active" data-panel="what"><i class="fas fa-circle-question"></i><span>LightGBMとは？</span></div>
+    <div class="nav-item" data-panel="how"><i class="fas fa-gears"></i><span>使い方</span></div>
+    <div class="nav-item" data-panel="cases"><i class="fas fa-briefcase"></i><span>活用事例</span></div>
+    <div class="nav-item" data-panel="weak"><i class="fas fa-triangle-exclamation"></i><span>苦手な分析</span></div>
+  </div>
+
+  <div class="panel active" id="panel-what">
+    <div class="card">
+      <h2><i class="fas fa-circle-question"></i>LightGBMとは？</h2>
+      <p>LightGBM（Light Gradient Boosting Machine）は、Microsoft が開発した「<strong>勾配ブースティング木</strong>」というアルゴリズムの一種です。たくさんの小さな決定木を順番に作り、前の木の予測の誤りを次の木が少しずつ修正していくことで、全体として高精度な予測モデルを組み上げます。</p>
+      <div class="highlight">
+        <strong>ひとことで言うと：</strong>「行と列で表せる<strong>表形式（テーブル）データ</strong>の予測・分類・順位付けにおいて、2026年時点でも主力とされる、高速かつ高精度な機械学習エンジン」です。
+      </div>
+      <h3>なぜ主流とされるのか</h3>
+      <ul>
+        <li><strong>高精度</strong>：非線形な関係や、要因同士の複雑な絡み合い（交互作用）を自動で捉える</li>
+        <li><strong>高速・省メモリ</strong>：大規模データでも軽快に学習でき、名前の通り "Light"</li>
+        <li><strong>使い勝手</strong>：カテゴリ変数をそのまま扱え、欠損値にも強い。前処理の手間が少ない</li>
+        <li><strong>万能エンジン</strong>：設定（objective）を変えるだけで、予測・分類・順位の用途に切り替えられる</li>
+      </ul>
+      <p>分析コンペ（Kaggle 等）でテーブルデータ課題の上位解法を長年占めてきた実績が、その実用性を裏付けています。顧客データ・売上・製造ログなど、企業が扱う業務データの多くはこの「テーブルデータ」のため、まず第一候補に挙がる道具です。</p>
+      <h3>XGBoost・CatBoost との関係</h3>
+      <p>LightGBM は唯一解ではなく、同じ勾配ブースティング木の仲間に <strong>XGBoost</strong>（安定性・実績重視）と <strong>CatBoost</strong>（カテゴリ変数が非常に多いデータに強い）があります。3者は使い分けの関係で、LightGBM は特に「大規模データを高速に回す」のが強みです。</p>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-how">
+    <div class="card">
+      <h2><i class="fas fa-gears"></i>LightGBMの使い方</h2>
+      <p>最大の特徴は、<strong>目的関数（objective）を切り替えるだけで、4つの分析目的のうち3つに同じエンジンで対応できる</strong>点です。用途ごとの設定を見ていきます。</p>
+      <table class="table">
+        <thead><tr><th style="width:22%">分析目的</th><th style="width:28%">objective 設定</th><th>置き換わる従来手法</th></tr></thead>
+        <tbody>
+          <tr><td>絶対値予測（数値予測）</td><td class="obj">regression</td><td>回帰分析・数量化I類</td></tr>
+          <tr><td>順位予測</td><td class="obj">lambdarank</td><td>ランキング学習</td></tr>
+          <tr><td>分類（2値）</td><td class="obj">binary</td><td>ロジスティック回帰</td></tr>
+          <tr><td>分類（多値）</td><td class="obj">multiclass</td><td>判別分析・数量化II類</td></tr>
+        </tbody>
+      </table>
+
+      <div class="acc">
+        <div class="acc-head" onclick="toggleAcc(this)"><h4>① 絶対値予測<span class="tag">数値を予測する</span></h4><i class="fas fa-chevron-right acc-icon open"></i></div>
+        <div class="acc-body open">
+          <p>売上・価格・需要量などの数値を予測します。線形回帰と違い、「築年数は新しいほど価格が上がるが、面積が大きい物件では築年数の影響が弱まる」といった非線形・交互作用を自動で学習します。</p>
+          <div class="code-box"><span class="cmt"># 回帰タスクの基本設定</span><br>params = {<br>&nbsp;&nbsp;<span class="key">'objective'</span>: <span class="str">'regression'</span>,<br>&nbsp;&nbsp;<span class="key">'metric'</span>: <span class="str">'rmse'</span>&nbsp;&nbsp;<span class="cmt"># 評価指標</span><br>}</div>
+          <p style="margin:0;"><strong>使い方のポイント：</strong>カテゴリ変数は <code>categorical_feature</code> 指定でそのまま投入可能（数量化I類のような事前ダミー変換が不要）。評価指標は RMSE や MAE。</p>
+        </div>
+      </div>
+
+      <div class="acc">
+        <div class="acc-head" onclick="toggleAcc(this)"><h4>② 順位予測<span class="tag">グループ内の並び順を当てる</span></h4><i class="fas fa-chevron-right acc-icon"></i></div>
+        <div class="acc-body">
+          <p>回帰で「数値」を当てるのではなく、<strong>グループ内での相対的な並び順そのものを最適化</strong>します。<code>group</code> パラメータで「どこからどこまでが1グループ（例：1レース）か」を指定するのが要点です。</p>
+          <div class="code-box"><span class="cmt"># ランキング学習の設定</span><br>params = {<br>&nbsp;&nbsp;<span class="key">'objective'</span>: <span class="str">'lambdarank'</span>,<br>&nbsp;&nbsp;<span class="key">'metric'</span>: <span class="str">'ndcg'</span><br>}<br><span class="cmt"># group=[6,6,6,...] 各グループの件数を渡す</span></div>
+          <p style="margin:0;"><strong>適する場面：</strong>検索結果やレコメンドの並び替え、競艇・競馬予測など「グループ内の優先順位」を当てたいとき。評価指標は NDCG。</p>
+        </div>
+      </div>
+
+      <div class="acc">
+        <div class="acc-head" onclick="toggleAcc(this)"><h4>③ 分類<span class="tag">カテゴリに振り分ける</span></h4><i class="fas fa-chevron-right acc-icon"></i></div>
+        <div class="acc-body">
+          <p>良品/不良品、継続/離脱のような<strong>2分類</strong>は <code>binary</code>、VIP/標準/一般のような<strong>多分類</strong>は <code>multiclass</code> を使います。2分類では確率（0〜1）を出力できるのも特徴です。</p>
+          <div class="code-box"><span class="cmt"># 2分類の設定</span><br>params = {<br>&nbsp;&nbsp;<span class="key">'objective'</span>: <span class="str">'binary'</span>,<br>&nbsp;&nbsp;<span class="key">'metric'</span>: <span class="str">'auc'</span>,<br>&nbsp;&nbsp;<span class="key">'is_unbalance'</span>: True&nbsp;<span class="cmt"># 不均衡データ対策</span><br>}</div>
+          <p style="margin:0;"><strong>使い方のポイント：</strong>離脱客が極端に少ないなど不均衡なデータには <code>scale_pos_weight</code> や <code>is_unbalance</code> で調整。評価指標は AUC、F1、logloss。</p>
+        </div>
+      </div>
+
+      <div class="acc">
+        <div class="acc-head" onclick="toggleAcc(this)"><h4>④ 最適化への寄与<span class="tag">代理モデルとして脇役</span></h4><i class="fas fa-chevron-right acc-icon"></i></div>
+        <div class="acc-body">
+          <p>最適条件の探索そのものは LightGBM の仕事ではありません（遺伝的アルゴリズムやベイズ最適化の領域）。ただし<strong>「最適化したい対象を予測する代理モデル（サロゲートモデル）」</strong>として重要な役割を果たします。</p>
+          <p style="margin:0;">流れ：①「製造条件 → 歩留率」の関係を LightGBM で学習 → ②その学習済みモデルを<strong>高速な仮想実験装置</strong>として使い、最適化アルゴリズムが「どの条件なら歩留率が最大か」を探索する、という分業です。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-cases">
+    <div class="card">
+      <h2><i class="fas fa-briefcase"></i>LightGBMの活用事例</h2>
+      <p>4つの分析目的に対応する具体的なビジネス事例です。それぞれ目的変数・説明変数・成果のイメージを示します。</p>
+
+      <h3><i class="fas fa-chart-line" style="color:#185fa5;margin-right:6px;"></i>事例1：不動産価格の予測（絶対値予測）</h3>
+      <p><strong>目的変数：</strong>物件価格　／　<strong>説明変数：</strong>築年数・面積・駅徒歩・階数</p>
+      <p><span class="result-label">成果</span>各要因の金額インパクトを定量化しつつ、線形回帰では捉えられない「立地と築年数の相互作用」を反映。価格査定の精度が向上し、根拠説明にも活用。</p>
+
+      <h3><i class="fas fa-trophy" style="color:#185fa5;margin-right:6px;"></i>事例2：ボートレース着順予測（順位予測）</h3>
+      <p><strong>目的変数：</strong>レース内着順　／　<strong>説明変数：</strong>選手成績・モーター性能・展示タイム・コース</p>
+      <p><span class="result-label">成果</span><code>lambdarank</code> でレース単位の順位を直接最適化。各艇の着順確率を <code>multiclass</code> で出して組み合わせるハイブリッドで、3連単的中の精度向上を狙える。</p>
+
+      <h3><i class="fas fa-users" style="color:#185fa5;margin-right:6px;"></i>事例3：顧客離脱予測（分類）</h3>
+      <p><strong>目的変数：</strong>継続/離脱　／　<strong>説明変数：</strong>契約期間・月額・サポート利用・ログイン頻度</p>
+      <p><span class="result-label">成果</span>「離脱確率75%」と確率で示せるため、危険水準の顧客を自動抽出。早期フォローで離脱削減につなげられる。</p>
+
+      <h3><i class="fas fa-industry" style="color:#185fa5;margin-right:6px;"></i>事例4：製造プロセス最適化（最適化の代理モデル）</h3>
+      <p><strong>目的変数：</strong>歩留率　／　<strong>説明変数：</strong>温度・時間・圧力・湿度</p>
+      <p><span class="result-label">成果</span>「条件→歩留率」を LightGBM で学習し、その上でベイズ最適化が最適点を探索。実機の試行回数を抑えつつ最適条件を発見。</p>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-weak">
+    <div class="card">
+      <h2><i class="fas fa-triangle-exclamation"></i>LightGBMが苦手な分析</h2>
+      <p>「主流」と「万能」は別物です。LightGBM が適用しづらい・不向きな場面を理解しておくことが、誤用を防ぐ鍵になります。</p>
+
+      <table class="table">
+        <thead><tr><th style="width:30%">苦手な領域</th><th style="width:14%">適性</th><th>代わりに検討する手法</th></tr></thead>
+        <tbody>
+          <tr><td>非構造化データ（画像・音声・文章・動画）</td><td><span class="eval eval-bad">不向き</span></td><td>ディープラーニング（CNN・Transformer）</td></tr>
+          <tr><td>データが極端に少ない（数十件）</td><td><span class="eval eval-bad">不向き</span></td><td>線形回帰・ロジスティック回帰</td></tr>
+          <tr><td>判断根拠の説明責任が重い（与信・医療・行政）</td><td><span class="eval eval-mid">要注意</span></td><td>線形モデル・ロジスティック回帰</td></tr>
+          <tr><td>厳密な最適化そのもの</td><td><span class="eval eval-mid">脇役</span></td><td>遺伝的アルゴリズム・線形計画法</td></tr>
+          <tr><td>長期の時系列・範囲外への外挿</td><td><span class="eval eval-mid">要工夫</span></td><td>Prophet・状態空間モデル</td></tr>
+          <tr><td>超低遅延・極小環境での推論</td><td><span class="eval eval-mid">要検討</span></td><td>軽量な線形モデル</td></tr>
+        </tbody>
+      </table>
+
+      <h3>特に押さえるべき3つの限界</h3>
+      <ul>
+        <li><strong>非構造化データは土俵が違う</strong>：画像分類や文章生成はディープラーニングの領域。音声認識（ElevenLabs等）や文章理解もこちら側で、LightGBM を直接当てるのは筋が悪い</li>
+        <li><strong>少数データでは過学習しやすい</strong>：木を多数育てる性質上、サンプルが少ないと単純な線形モデルの方が安定し、解釈もしやすい</li>
+        <li><strong>ブラックボックス寄り</strong>：特徴量重要度やSHAPで補えるが、規制・監査で判断根拠の明示が義務づけられる領域では、あえて線形モデルを選ぶことがある</li>
+      </ul>
+
+      <div class="highlight">
+        <strong>判断基準（研修で使える一言）：</strong>「テーブルデータの予測・分類・順位なら、まず LightGBM を試すのが2026年でも合理的なデフォルト。ただし①画像や文章などの非構造化データ、②データが極端に少ない、③判断根拠の説明が法的に必須、のどれかに当たるなら別の道具を選ぶ」
+      </div>
+      <p style="margin-bottom:0;">万能の銀の弾丸はなく、<strong>データの形と説明責任の重さで道具を選ぶ</strong>——これが本質です。</p>
+    </div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById('panel-' + item.dataset.panel).classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+function toggleAcc(head) {
+  head.nextElementSibling.classList.toggle('open');
+  head.querySelector('.acc-icon').classList.toggle('open');
+}
+</script>
+</body>
+</html>
