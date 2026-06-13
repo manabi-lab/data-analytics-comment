@@ -1,0 +1,618 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>重回帰分析の3D可視化 ― 当てはまりの良い平面</title>
+<style>
+  :root{
+    --ink:#10243e;        /* 濃紺 */
+    --paper:#f3f0e7;      /* 製図紙の生成り */
+    --grid:#c9c2b0;
+    --accent:#c0392b;     /* 資料の赤（回帰） */
+    --accent2:#2e7d6b;    /* 緑：誤差が小さい */
+    --x1:#5b6fd6;         /* X1 */
+    --x2:#d98a2b;         /* X2 */
+    --yc:#b03a8f;         /* Y */
+    --muted:#5d6b7a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:
+      repeating-linear-gradient(0deg, transparent 0 31px, rgba(201,194,176,.35) 31px 32px),
+      repeating-linear-gradient(90deg, transparent 0 31px, rgba(201,194,176,.35) 31px 32px),
+      var(--paper);
+    color:var(--ink);
+    font-family:"Meiryo UI","Hiragino Kaku Gothic ProN",sans-serif;
+    display:flex;flex-direction:column;min-height:100%;
+    overflow-x:hidden;
+  }
+  header{
+    padding:22px 28px 14px;
+    border-bottom:2px solid var(--ink);
+    display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 20px;
+  }
+  .eyebrow{
+    font-size:12px;letter-spacing:.32em;color:var(--accent);
+    font-weight:700;text-transform:uppercase;
+  }
+  h1{
+    font-size:clamp(20px,3vw,30px);font-weight:800;line-height:1.15;
+    letter-spacing:.01em;
+  }
+  h1 .eq{
+    font-family:"Times New Roman",serif;font-style:italic;
+    color:var(--accent);font-weight:700;white-space:nowrap;
+  }
+  .lead{
+    flex-basis:100%;font-size:13.5px;color:var(--muted);
+    max-width:760px;line-height:1.6;margin-top:2px;
+  }
+  main{flex:1;display:flex;flex-wrap:wrap;min-height:0}
+  #stage{
+    position:relative;flex:1 1 560px;min-height:460px;
+    background:radial-gradient(120% 120% at 50% 35%, #fbfaf5 0%, #ece7da 70%, #e2ddcd 100%);
+  }
+  canvas{display:block}
+  .stage-tag{
+    position:absolute;left:16px;bottom:14px;font-size:11px;
+    letter-spacing:.18em;color:var(--muted);text-transform:uppercase;
+    pointer-events:none;
+  }
+  .legend{
+    position:absolute;left:16px;top:14px;
+    background:rgba(243,240,231,.82);border:1px solid var(--grid);
+    backdrop-filter:blur(3px);
+    padding:10px 12px;font-size:12px;line-height:1.9;
+    box-shadow:2px 2px 0 rgba(16,36,62,.08);
+  }
+  .legend b{font-weight:700}
+  .swatch{display:inline-block;width:11px;height:11px;border-radius:2px;
+    margin-right:6px;vertical-align:-1px}
+  .panel{
+    flex:0 0 312px;border-left:2px solid var(--ink);
+    padding:20px 20px 24px;display:flex;flex-direction:column;gap:18px;
+    background:rgba(243,240,231,.55);
+  }
+  @media(max-width:880px){
+    .panel{flex-basis:100%;border-left:none;border-top:2px solid var(--ink)}
+  }
+  .panel h2{font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--accent);border-bottom:1px solid var(--grid);padding-bottom:6px}
+
+  .formula{
+    font-family:"Times New Roman",serif;font-size:19px;text-align:center;
+    padding:14px 8px;background:#fff;border:1px solid var(--grid);
+    line-height:1.8;
+  }
+  .formula .b{color:var(--accent);font-style:italic}
+  .formula .v1{color:var(--x1);font-weight:700}
+  .formula .v2{color:var(--x2);font-weight:700}
+  .formula .vy{color:var(--yc);font-weight:700}
+  .coef-row{display:flex;justify-content:space-between;align-items:baseline;
+    font-size:13px;padding:3px 0;border-bottom:1px dotted var(--grid)}
+  .coef-row .name{color:var(--muted)}
+  .coef-row .val{font-family:"Times New Roman",serif;font-size:16px;font-weight:700;
+    font-variant-numeric:tabular-nums}
+
+  .metric{
+    display:flex;align-items:baseline;gap:8px;justify-content:space-between;
+  }
+  .metric .lab{font-size:12px;color:var(--muted)}
+  .metric .num{font-family:"Times New Roman",serif;font-weight:700;
+    font-size:26px;font-variant-numeric:tabular-nums;color:var(--accent2)}
+  .bar{height:7px;background:var(--grid);position:relative;overflow:hidden;margin-top:5px}
+  .bar > i{position:absolute;left:0;top:0;bottom:0;background:var(--accent2);width:0%;
+    transition:width .25s linear}
+
+  .controls{display:flex;flex-direction:column;gap:10px;margin-top:2px}
+  .btn{
+    appearance:none;border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);
+    font-family:inherit;font-size:13px;font-weight:700;letter-spacing:.04em;
+    padding:11px 14px;cursor:pointer;transition:transform .08s, background .15s;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+  .btn:hover{background:#0a1a2e}
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{cursor:default}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn.ghost:hover{background:rgba(16,36,62,.07)}
+  .toggle-row{display:flex;gap:8px}
+  .toggle-row .btn{flex:1}
+  .hint{font-size:11.5px;color:var(--muted);line-height:1.6}
+  .step-readout{
+    font-size:12.5px;line-height:1.6;background:#fff;border-left:3px solid var(--accent);
+    padding:9px 11px;min-height:62px;
+  }
+  .step-readout b{color:var(--ink)}
+  kbd{font-family:inherit;background:var(--ink);color:var(--paper);
+    border-radius:3px;padding:1px 6px;font-size:11px}
+</style>
+</head>
+<body>
+<header>
+  <div style="flex-basis:100%">
+    <div class="eyebrow">重回帰分析 ハンズオン ／ 3D Visualization</div>
+  </div>
+  <h1>2つの説明変数と1つの目的変数を、立体で見る<br>
+    <span class="eq">Y = a₁X₁ + a₂X₂ + b</span></h1>
+  <p class="lead">
+    説明変数が2つになると、当てはめるのは「直線」ではなく
+    <b>回帰平面</b>になります。各点から平面までの縦の隔たり（残差）の二乗和が
+    最小になるように、平面が空間にフィットしていく様子をアニメーションで確認できます。
+    ドラッグで視点を回転、スクロールでズームできます。
+  </p>
+</header>
+
+<main>
+  <div id="stage">
+    <div class="legend">
+      <div><span class="swatch" style="background:var(--x1)"></span><b>X₁</b>：営業訪問回数</div>
+      <div><span class="swatch" style="background:var(--x2)"></span><b>X₂</b>：提案件数</div>
+      <div><span class="swatch" style="background:var(--yc)"></span><b>Y</b>：売上（目的変数）</div>
+      <div><span class="swatch" style="background:var(--accent)"></span>回帰平面</div>
+      <div><span class="swatch" style="background:var(--accent2)"></span>残差（実測−予測）</div>
+    </div>
+    <div class="stage-tag">drag to rotate ・ scroll to zoom</div>
+  </div>
+
+  <aside class="panel">
+    <div>
+      <h2>予測モデル</h2>
+      <div class="formula" style="margin-top:10px">
+        <span class="vy">Y</span> =
+        <span class="b" id="fA1">0.00</span>·<span class="v1">X₁</span> +
+        <span class="b" id="fA2">0.00</span>·<span class="v2">X₂</span> +
+        <span class="b" id="fB">0.0</span>
+      </div>
+      <div style="margin-top:12px">
+        <div class="coef-row"><span class="name"><span class="swatch" style="background:var(--x1)"></span>係数 a₁（訪問回数の効き）</span><span class="val" id="cA1">–</span></div>
+        <div class="coef-row"><span class="name"><span class="swatch" style="background:var(--x2)"></span>係数 a₂（提案件数の効き）</span><span class="val" id="cA2">–</span></div>
+        <div class="coef-row"><span class="name">定数項 b</span><span class="val" id="cB">–</span></div>
+      </div>
+    </div>
+
+    <div>
+      <h2>あてはまりの良さ</h2>
+      <div class="metric" style="margin-top:10px">
+        <span class="lab">決定係数 R²</span>
+        <span class="num" id="r2">0.00</span>
+      </div>
+      <div class="bar"><i id="r2bar"></i></div>
+      <div class="metric" style="margin-top:12px">
+        <span class="lab">残差二乗和 (SSR)</span>
+        <span class="num" id="ssr" style="font-size:20px;color:var(--accent)">–</span>
+      </div>
+      <div class="bar"><i id="ssrbar" style="background:var(--accent)"></i></div>
+    </div>
+
+    <div class="controls">
+      <h2>操作</h2>
+      <button class="btn" id="playBtn">▶ 平面を現して当てはめる</button>
+      <div class="toggle-row">
+        <button class="btn ghost" id="resBtn">残差 表示</button>
+        <button class="btn ghost" id="spinBtn">自動回転 入</button>
+      </div>
+      <div class="step-readout" id="readout">
+        <b>平面なし：</b>いま空間にあるのは観測データだけです。再生すると、これらの点に最もよく当てはまる回帰平面が現れ、最小二乗法で位置を合わせていきます。
+      </div>
+      <div class="hint">
+        ※ 平面の傾き a₁・a₂ が各説明変数の「影響力」に当たります。資料の係数（0.93 / 0.41）と同じく、
+        傾きが大きいほどYへの効きが強いことを表します。
+      </div>
+    </div>
+  </aside>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ============================================================
+//  重回帰分析 3D 可視化
+//  Y = a1*X1 + a2*X2 + b  を最小二乗法で当てはめる様子
+// ============================================================
+const stage = document.getElementById('stage');
+
+const scene = new THREE.Scene();
+scene.background = null;
+
+const camera = new THREE.PerspectiveCamera(45, stage.clientWidth/stage.clientHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(stage.clientWidth, stage.clientHeight);
+stage.appendChild(renderer.domElement);
+
+// ---- 色 ----
+const COL = {
+  x1:0x5b6fd6, x2:0xd98a2b, y:0xb03a8f,
+  plane:0xc0392b, resid:0x2e7d6b, ink:0x10243e, grid:0xb9b2a0
+};
+
+// ============================================================
+//  データ生成： 真の関係 Y = 0.85*X1 + 0.42*X2 + b + ノイズ
+//  X1,X2,Y は 0..10 のスケールに正規化して描画
+// ============================================================
+const N = 40;
+const TRUE_A1 = 0.85, TRUE_A2 = 0.42, TRUE_B = 1.2;
+const pts = [];
+let seed = 20240611;
+function rand(){ seed = (seed*9301+49297)%233280; return seed/233280; }
+for(let i=0;i<N;i++){
+  const x1 = rand()*9 + 0.5;
+  const x2 = rand()*9 + 0.5;
+  let y = TRUE_A1*x1 + TRUE_A2*x2 + TRUE_B + (rand()-0.5)*3.0;
+  y = Math.max(0.3, Math.min(11.5, y));
+  pts.push({x1,x2,y});
+}
+
+// ---- 最小二乗法で a1,a2,b を解く（正規方程式）----
+function fitPlane(data){
+  let Sxx1=0,Sxx2=0,Sx1x2=0,Sx1=0,Sx2=0,Sy=0,Sx1y=0,Sx2y=0,n=data.length;
+  for(const p of data){
+    Sxx1+=p.x1*p.x1; Sxx2+=p.x2*p.x2; Sx1x2+=p.x1*p.x2;
+    Sx1+=p.x1; Sx2+=p.x2; Sy+=p.y;
+    Sx1y+=p.x1*p.y; Sx2y+=p.x2*p.y;
+  }
+  // 3x3 連立： [Sxx1 Sx1x2 Sx1; Sx1x2 Sxx2 Sx2; Sx1 Sx2 n] [a1 a2 b]^T = [Sx1y Sx2y Sy]
+  const M=[[Sxx1,Sx1x2,Sx1],[Sx1x2,Sxx2,Sx2],[Sx1,Sx2,n]];
+  const V=[Sx1y,Sx2y,Sy];
+  return solve3(M,V);
+}
+function solve3(M,V){
+  const A=M.map((r,i)=>[...r,V[i]]);
+  for(let c=0;c<3;c++){
+    let piv=c; for(let r=c+1;r<3;r++) if(Math.abs(A[r][c])>Math.abs(A[piv][c])) piv=r;
+    [A[c],A[piv]]=[A[piv],A[c]];
+    const d=A[c][c];
+    for(let k=c;k<4;k++) A[c][k]/=d;
+    for(let r=0;r<3;r++){ if(r!==c){ const f=A[r][c]; for(let k=c;k<4;k++) A[r][k]-=f*A[c][k]; } }
+  }
+  return {a1:A[0][3], a2:A[1][3], b:A[2][3]};
+}
+const BEST = fitPlane(pts);
+
+// 平均Y（R²計算用）
+const meanY = pts.reduce((s,p)=>s+p.y,0)/N;
+const SStot = pts.reduce((s,p)=>s+(p.y-meanY)**2,0);
+function ssrFor(a1,a2,b){
+  return pts.reduce((s,p)=>{ const pred=a1*p.x1+a2*p.x2+b; return s+(p.y-pred)**2; },0);
+}
+const SSR_BEST = ssrFor(BEST.a1,BEST.a2,BEST.b);
+const SSR_FLAT = ssrFor(0,0,meanY);
+
+// ============================================================
+//  座標系の構築（軸・グリッド・ラベル）
+//  描画空間：X1→x軸, X2→z軸, Y→y軸（縦）。範囲 0..10
+// ============================================================
+const AX = 10;
+const root = new THREE.Group();
+scene.add(root);
+
+// 床グリッド（X1-X2平面）
+const grid = new THREE.GridHelper(AX, 10, COL.grid, COL.grid);
+grid.position.set(AX/2, 0, AX/2);
+grid.material.opacity=0.55; grid.material.transparent=true;
+root.add(grid);
+
+// 軸線
+function axisLine(a,b,color){
+  const g=new THREE.BufferGeometry().setFromPoints([a,b]);
+  return new THREE.Line(g, new THREE.LineBasicMaterial({color, linewidth:2}));
+}
+root.add(axisLine(new THREE.Vector3(0,0,0), new THREE.Vector3(AX,0,0), COL.x1));   // X1
+root.add(axisLine(new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,AX), COL.x2));   // X2
+root.add(axisLine(new THREE.Vector3(0,0,0), new THREE.Vector3(0,AX,0), COL.y));    // Y
+
+// 軸の目盛り（淡い縦ガイド）
+for(let i=0;i<=AX;i+=2){
+  const gl=axisLine(new THREE.Vector3(i,0,0),new THREE.Vector3(i,0,AX),COL.grid);
+  gl.material.opacity=0.25; gl.material.transparent=true; root.add(gl);
+}
+
+// テキストラベル（スプライト）
+function makeLabel(text,color,scale=1){
+  const c=document.createElement('canvas'); c.width=256;c.height=128;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle=color; ctx.font='bold 64px "Times New Roman",serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(text,128,64);
+  const tex=new THREE.CanvasTexture(c);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true}));
+  sp.scale.set(1.6*scale,0.8*scale,1);
+  return sp;
+}
+const cssCol = k=>'#'+COL[k].toString(16).padStart(6,'0');
+const lbX1=makeLabel('X₁',cssCol('x1')); lbX1.position.set(AX+0.6,0,0); root.add(lbX1);
+const lbX2=makeLabel('X₂',cssCol('x2')); lbX2.position.set(0,0,AX+0.6); root.add(lbX2);
+const lbY =makeLabel('Y', cssCol('y'));  lbY.position.set(0,AX+0.6,0);  root.add(lbY);
+
+// ============================================================
+//  回帰平面メッシュ（傾きを動的に更新）
+// ============================================================
+const planeGeo = new THREE.PlaneGeometry(AX,AX,1,1);
+const planeMat = new THREE.MeshBasicMaterial({
+  color:COL.plane, transparent:true, opacity:0.0, side:THREE.DoubleSide,
+  depthWrite:false
+});
+const planeMesh = new THREE.Mesh(planeGeo, planeMat);
+root.add(planeMesh);
+
+// 平面のワイヤー枠
+const planeEdge = new THREE.LineSegments(
+  new THREE.EdgesGeometry(planeGeo),
+  new THREE.LineBasicMaterial({color:COL.plane, transparent:true, opacity:0.0})
+);
+planeMesh.add(planeEdge);
+
+// 平面の不透明度をまとめて制御（0=完全に消えている, 1=通常表示）
+function setPlaneOpacity(o){
+  planeMesh.material.opacity = 0.30*o;
+  planeEdge.material.opacity = 0.70*o;
+}
+
+// 平面を Y = a1*X1 + a2*X2 + b に合わせて変形
+function updatePlane(a1,a2,b){
+  const g=planeMesh.geometry;
+  // PlaneGeometry はローカルXY平面。4頂点を直接 (X1,X2)→(x,y=Y,z) に再配置するため
+  // 自前ジオメトリで置き換える方が確実。
+  const x1s=[0,AX,0,AX], x2s=[0,0,AX,AX];
+  const pos=g.attributes.position;
+  // 頂点順： (-,-),(+,-),(-,+),(+,+) に対応するようマッピング
+  const corners=[[0,0],[AX,0],[0,AX],[AX,AX]];
+  for(let i=0;i<4;i++){
+    const X1=corners[i][0], X2=corners[i][1];
+    const Y=a1*X1+a2*X2+b;
+    pos.setXYZ(i, X1, Y, X2);
+  }
+  pos.needsUpdate=true;
+  g.computeVertexNormals();
+  planeEdge.geometry.dispose();
+  planeEdge.geometry=new THREE.EdgesGeometry(g);
+}
+// PlaneGeometry の頂点をワールド配置で使うため、メッシュ自身の変換は無効化
+planeMesh.position.set(0,0,0);
+planeMesh.rotation.set(0,0,0);
+
+// ============================================================
+//  データ点（球）と残差線
+// ============================================================
+const pointGroup = new THREE.Group(); root.add(pointGroup);
+const residGroup = new THREE.Group(); root.add(residGroup);
+residGroup.visible = false; // 平面が現れるまで残差は出さない
+const sphereGeo = new THREE.SphereGeometry(0.13,16,16);
+const sphereMat = new THREE.MeshBasicMaterial({color:COL.y});
+const stemMat   = new THREE.LineBasicMaterial({color:COL.grid, transparent:true, opacity:0.45});
+
+const pointMeshes=[], residLines=[], stemLines=[];
+for(const p of pts){
+  const m=new THREE.Mesh(sphereGeo, sphereMat.clone());
+  m.position.set(p.x1, p.y, p.x2);
+  pointGroup.add(m); pointMeshes.push(m);
+
+  // 床への投影ステム（点の位置把握を助ける）
+  const sg=new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(p.x1,0,p.x2), new THREE.Vector3(p.x1,p.y,p.x2)]);
+  const sl=new THREE.Line(sg, stemMat.clone());
+  pointGroup.add(sl); stemLines.push(sl);
+
+  // 残差線（点 → 平面上の予測値）
+  const rg=new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(p.x1,p.y,p.x2), new THREE.Vector3(p.x1,p.y,p.x2)]);
+  const rl=new THREE.Line(rg, new THREE.LineBasicMaterial({color:COL.resid}));
+  residGroup.add(rl); residLines.push(rl);
+}
+function updateResiduals(a1,a2,b){
+  for(let i=0;i<pts.length;i++){
+    const p=pts[i]; const pred=a1*p.x1+a2*p.x2+b;
+    const g=residLines[i].geometry;
+    const pos=g.attributes.position;
+    pos.setXYZ(0,p.x1,p.y,p.x2);
+    pos.setXYZ(1,p.x1,pred,p.x2);
+    pos.needsUpdate=true;
+    // 残差が小さいほど緑が濃く、大きいほど赤寄りに
+    const err=Math.abs(p.y-pred);
+    const t=Math.min(1,err/4);
+    residLines[i].material.color.setRGB(0.18+0.65*t, 0.49-0.2*t, 0.42-0.3*t);
+  }
+}
+
+// ============================================================
+//  カメラ操作（自前の軌道コントロール）
+// ============================================================
+let theta=0.9, phi=1.05, radius=22;
+const target=new THREE.Vector3(AX/2, AX/2.4, AX/2);
+function applyCam(){
+  camera.position.set(
+    target.x + radius*Math.sin(phi)*Math.cos(theta),
+    target.y + radius*Math.cos(phi),
+    target.z + radius*Math.sin(phi)*Math.sin(theta)
+  );
+  camera.lookAt(target);
+}
+applyCam();
+
+let dragging=false, px=0, py=0;
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;px=e.clientX;py=e.clientY;autoSpin=false;});
+window.addEventListener('pointerup',()=>dragging=false);
+window.addEventListener('pointermove',e=>{
+  if(!dragging)return;
+  theta -= (e.clientX-px)*0.008;
+  phi   -= (e.clientY-py)*0.008;
+  phi=Math.max(0.25,Math.min(Math.PI-0.15,phi));
+  px=e.clientX;py=e.clientY; applyCam();
+});
+renderer.domElement.addEventListener('wheel',e=>{
+  e.preventDefault();
+  radius=Math.max(12,Math.min(45, radius+e.deltaY*0.02));
+  applyCam();
+},{passive:false});
+
+// ============================================================
+//  UI 連携
+// ============================================================
+const $=id=>document.getElementById(id);
+function setReadout(a1,a2,b,r2,prog){
+  $('fA1').textContent=a1.toFixed(2);
+  $('fA2').textContent=a2.toFixed(2);
+  $('fB').textContent=b.toFixed(1);
+  $('cA1').textContent=a1.toFixed(3);
+  $('cA2').textContent=a2.toFixed(3);
+  $('cB').textContent=b.toFixed(3);
+  $('r2').textContent=r2.toFixed(2);
+  $('r2bar').style.width=Math.max(0,r2*100).toFixed(0)+'%';
+  const ssr=ssrFor(a1,a2,b);
+  $('ssr').textContent=ssr.toFixed(0);
+  $('ssrbar').style.width=Math.min(100,(ssr/SSR_FLAT)*100).toFixed(0)+'%';
+}
+function r2For(a1,a2,b){ return 1 - ssrFor(a1,a2,b)/SStot; }
+
+// 現在の平面パラメータ
+let cur={a1:0,a2:0,b:meanY};
+function render(a1,a2,b){
+  updatePlane(a1,a2,b);
+  updateResiduals(a1,a2,b);
+  setReadout(a1,a2,b, r2For(a1,a2,b));
+}
+
+// 平面が「無い」初期表示：散布図だけを見せ、指標は空欄
+function showNoPlane(){
+  setPlaneOpacity(0);
+  residGroup.visible=false;
+  // 平面ジオメトリは最適解の位置に用意しておく（出現時にそこへ現れる）
+  updatePlane(BEST.a1,BEST.a2,BEST.b);
+  $('fA1').textContent='–'; $('fA2').textContent='–'; $('fB').textContent='–';
+  $('cA1').textContent='–'; $('cA2').textContent='–'; $('cB').textContent='–';
+  $('r2').textContent='–'; $('r2bar').style.width='0%';
+  $('ssr').textContent='–'; $('ssrbar').style.width='0%';
+  $('readout').innerHTML='<b>平面なし：</b>いま空間にあるのは観測データだけです。再生すると、これらの点に最もよく当てはまる<b>回帰平面</b>が現れ、最小二乗法で位置を合わせていきます。';
+}
+showNoPlane();
+
+// ---- あてはめアニメーション ----
+// Phase 1: 平面が床から立ち上がりながらフェードインして出現
+// Phase 2: 最小二乗法の最適な傾きへ収束
+let anim=null;
+function playFit(){
+  if(anim) cancelAnimationFrame(anim);
+  residGroup.visible=false;
+  $('playBtn').disabled=true;
+  $('playBtn').style.opacity=0.55;
+  $('playBtn').textContent='平面を当てはめ中…';
+
+  const APPEAR=1100;      // 出現フェーズの長さ(ms)
+  const SETTLE=2200;      // フィットフェーズの長さ(ms)
+  const t0=performance.now();
+  $('readout').innerHTML='<b>平面が出現中…</b>データの重心あたりから回帰平面が立ち上がります。';
+
+  function ease(t){ return t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+
+  function frame(now){
+    const elapsed=now-t0;
+
+    if(elapsed < APPEAR){
+      // --- Phase 1: 出現 ---
+      const t=elapsed/APPEAR, e=ease(t);
+      // 平面は最初フラット（傾き0・重心の高さ）の姿で、床付近から meanY へせり上がる
+      const startB = -2;             // 床より少し下から
+      const b = startB + (meanY-startB)*e;
+      cur={a1:0, a2:0, b};
+      updatePlane(cur.a1,cur.a2,cur.b);
+      setPlaneOpacity(e);            // フェードイン
+      // 指標はまだ出さない（出現しきってから）
+      anim=requestAnimationFrame(frame);
+      return;
+    }
+
+    const te=elapsed-APPEAR;
+    if(te < SETTLE){
+      // --- Phase 2: フィット ---
+      if(!residGroup.visible){ residGroup.visible=showResid; }
+      setPlaneOpacity(1);
+      const t=te/SETTLE, e=ease(t);
+      const start={a1:0,a2:0,b:meanY};
+      cur.a1=start.a1+(BEST.a1-start.a1)*e;
+      cur.a2=start.a2+(BEST.a2-start.a2)*e;
+      cur.b =start.b +(BEST.b -start.b )*e;
+      render(cur.a1,cur.a2,cur.b);
+      if(te>SETTLE*0.12){
+        $('readout').innerHTML='<b>あてはめ中…</b>最小二乗法が残差二乗和を小さくする向きへ平面を傾けています。緑の残差線が短くなるほど予測が実測に近づきます。';
+      }
+      anim=requestAnimationFrame(frame);
+      return;
+    }
+
+    // --- 完了 ---
+    cur={...BEST};
+    setPlaneOpacity(1);
+    render(cur.a1,cur.a2,cur.b);
+    anim=null;
+    $('playBtn').disabled=false;
+    $('playBtn').style.opacity=1;
+    $('playBtn').textContent='↻ もう一度 平面を現す';
+    $('readout').innerHTML='<b>あてはめ完了。</b>R² = '+r2For(BEST.a1,BEST.a2,BEST.b).toFixed(2)+
+      '。平面の傾き a₁='+BEST.a1.toFixed(2)+'（訪問回数）, a₂='+BEST.a2.toFixed(2)+
+      '（提案件数）が各変数の影響力です。a₁ の方が大きい＝売上への効きが強い、と読めます。';
+  }
+  anim=requestAnimationFrame(frame);
+}
+
+function resetFlat(){
+  if(anim){cancelAnimationFrame(anim);anim=null;}
+  showNoPlane();
+}
+
+$('playBtn').addEventListener('click',()=>{
+  // すでに当てはめ済みなら、いったん平面なしに戻してから出現させる
+  const fitted = (anim===null) && (Math.abs(cur.a1-BEST.a1)<0.01);
+  if(fitted || anim){
+    showNoPlane();
+    setTimeout(playFit,200);
+  } else {
+    playFit();
+  }
+});
+
+// 残差表示トグル
+let showResid=true;
+$('resBtn').addEventListener('click',()=>{
+  showResid=!showResid;
+  // 平面が出ているときだけ残差を反映（平面なしのときは常に非表示）
+  const planeVisible = planeMesh.material.opacity > 0.001;
+  residGroup.visible = showResid && planeVisible;
+  $('resBtn').textContent= showResid?'残差 表示':'残差 非表示';
+  $('resBtn').classList.toggle('ghost',!showResid);
+});
+
+// 自動回転トグル
+let autoSpin=true;
+$('spinBtn').addEventListener('click',()=>{
+  autoSpin=!autoSpin;
+  $('spinBtn').textContent= autoSpin?'自動回転 入':'自動回転 切';
+  $('spinBtn').classList.toggle('ghost',!autoSpin);
+});
+
+// ============================================================
+//  レンダーループ
+// ============================================================
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if(reduceMotion) autoSpin=false;
+
+function loop(){
+  if(autoSpin && !dragging){ theta+=0.0024; applyCam(); }
+  renderer.render(scene,camera);
+  requestAnimationFrame(loop);
+}
+loop();
+
+// 初回ロード時は平面を出さず、ボタン操作を待つ（自動再生はしない）
+
+// リサイズ対応
+addEventListener('resize',()=>{
+  const w=stage.clientWidth,h=stage.clientHeight;
+  camera.aspect=w/h; camera.updateProjectionMatrix();
+  renderer.setSize(w,h);
+});
+</script>
+</body>
+</html>
