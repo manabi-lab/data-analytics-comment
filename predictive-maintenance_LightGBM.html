@@ -1,0 +1,555 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>発展編：故障予測をLightGBMにすると何が変わるか</title>
+<style>
+  :root{
+    --panel:#ffffff; --ink:#1f2937; --sub:#475569; --line:#e2e8f0;
+    --brand:#4f46e5; --brand-d:#4338ca; --accent:#7c3aed;
+    --good:#16a34a; --good-bg:#dcfce7; --bad:#dc2626; --bad-bg:#fee2e2;
+    --warn:#d97706; --warn-bg:#fef3c7; --gold:#f59e0b;
+    --lin:#0891b2; --gbdt:#7c3aed;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{font-family:"Hiragino Sans","ヒラギノ角ゴシック","Yu Gothic","游ゴシック","Meiryo",sans-serif;
+    margin:0; color:var(--ink); background:#eef2f7; font-size:18px; line-height:1.75;}
+  .wrap{max-width:1180px; margin:0 auto; padding:0 18px 80px;}
+  header.hero{background:linear-gradient(135deg,#4338ca 0%,#6d28d9 50%,#0e7490 100%); color:#fff; padding:54px 24px 46px; text-align:center;}
+  header.hero .badge{display:inline-block; background:#f59e0b; color:#3b2200; font-weight:800; padding:4px 16px; border-radius:999px; font-size:.85em; margin-bottom:14px; letter-spacing:1px;}
+  header.hero h1{font-size:2.0em; margin:0 0 10px; letter-spacing:.5px;}
+  header.hero p{font-size:1.1em; margin:6px auto; max-width:830px; opacity:.95;}
+  header.hero .tag{display:inline-block; margin-top:16px; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.4); padding:6px 16px; border-radius:999px; font-size:.95em;}
+
+  nav.toc{position:sticky; top:0; z-index:50; background:#1e1b4bee; backdrop-filter:blur(6px); padding:10px 14px; display:flex; gap:6px; flex-wrap:wrap; justify-content:center; box-shadow:0 2px 10px rgba(0,0,0,.15);}
+  nav.toc a{color:#c7d2fe; text-decoration:none; font-size:.85em; padding:6px 10px; border-radius:8px; white-space:nowrap;}
+  nav.toc a:hover{background:#312e81; color:#fff;}
+
+  section{background:var(--panel); border-radius:16px; margin:30px 0; padding:34px 32px; box-shadow:0 6px 22px rgba(15,23,42,.07);}
+  .sec-num{display:inline-flex; align-items:center; justify-content:center; width:46px; height:46px; background:var(--brand); color:#fff; border-radius:50%; font-weight:800; font-size:1.1em; margin-right:14px; flex:none;}
+  h2.sec-title{display:flex; align-items:center; font-size:1.58em; margin:0 0 6px; line-height:1.3;}
+  .lead{color:var(--sub); margin:4px 0 22px; font-size:1.03em;}
+  h3{font-size:1.25em; margin:30px 0 12px; color:#0f172a; border-left:6px solid var(--brand); padding-left:12px;}
+  h4{font-size:1.06em; margin:18px 0 8px;}
+
+  .goals{background:linear-gradient(135deg,#312e81,#1e293b); color:#e2e8f0; border-radius:16px; padding:26px 30px; margin:30px 0;}
+  .goals h2{margin:0 0 12px; font-size:1.32em; color:#fff;}
+  .goals ul{margin:0; padding-left:22px;} .goals li{margin:8px 0;}
+  .goals .who{margin-top:14px; font-size:.92em; opacity:.85;}
+
+  .callout{border-radius:12px; padding:18px 22px; margin:22px 0; border-left:7px solid;}
+  .callout.key{background:#eef2ff; border-color:var(--brand);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn);}
+  .callout.good{background:var(--good-bg); border-color:var(--good);}
+  .callout.lin{background:#ecfeff; border-color:var(--lin);}
+
+  .summary-box{background:#f8fafc; border:1px solid var(--line); border-left:5px solid var(--accent); border-radius:10px; padding:14px 18px; margin:24px 0 0; font-size:.95em;}
+  .summary-box b{color:#6d28d9;}
+
+  table{width:100%; border-collapse:collapse; margin:14px 0; font-size:.94em;}
+  th{background:#312e81; color:#fff; padding:11px 9px; text-align:center; font-weight:700;}
+  td{padding:10px 9px; border-bottom:1px solid var(--line); text-align:center;}
+  tbody tr:nth-child(even){background:#f8fafc;}
+  .tleft{text-align:left;}
+
+  .vs-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:16px 0;}
+  .vs-card{border-radius:12px; padding:16px 18px; border:2px solid;}
+  .vs-card.lin{border-color:var(--lin); background:#ecfeff;}
+  .vs-card.gbdt{border-color:var(--gbdt); background:#f5f3ff;}
+  .vs-card h4{margin:0 0 6px;}
+  .vs-card.lin h4{color:#0e7490;} .vs-card.gbdt h4{color:#6d28d9;}
+  .vs-card ul{margin:6px 0 0; padding-left:20px; font-size:.92em;} .vs-card li{margin:5px 0;}
+
+  /* インタラクティブ共通 */
+  .panel-int{background:linear-gradient(135deg,#1e1b4b,#312e81); color:#e2e8f0; border-radius:16px; padding:26px; margin:18px 0;}
+  .panel-int h3{color:#fff; border-color:var(--accent);}
+  .ctrl{margin:14px 0;}
+  .ctrl .lbl{display:flex; justify-content:space-between; font-weight:700; margin-bottom:6px;}
+  input[type=range]{width:100%; height:8px; -webkit-appearance:none; border-radius:6px; outline:none; cursor:pointer; background:#475569;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:22px; height:22px; border-radius:50%; background:#fff; border:3px solid var(--accent); cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.4);}
+  .readouts{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:14px 0;}
+  .ro{background:#0f172a; border-radius:10px; padding:12px; text-align:center;}
+  .ro .v{font-size:1.5em; font-weight:900;} .ro .k{font-size:.82em; opacity:.8;}
+
+  /* 混同行列 */
+  .cm{display:grid; grid-template-columns:90px 1fr 1fr; gap:6px; margin:14px 0; max-width:520px;}
+  .cm>div{padding:12px 8px; text-align:center; border-radius:8px; font-size:.9em;}
+  .cm .h{background:#475569; color:#fff; font-weight:700; display:flex; align-items:center; justify-content:center;}
+  .cm .tp{background:#16a34a; color:#fff; font-weight:800;}
+  .cm .fp{background:#f59e0b; color:#3b2200; font-weight:800;}
+  .cm .fn{background:#dc2626; color:#fff; font-weight:800;}
+  .cm .tn{background:#cbd5e1; color:#1f2937; font-weight:800;}
+  .cm .v{font-size:1.3em;}
+
+  /* SHAP waterfall */
+  .shap-pick{display:flex; gap:10px; flex-wrap:wrap; margin:10px 0;}
+  .shap-pick button{background:#312e81; color:#e2e8f0; border:1px solid #4f46e5; padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:600;}
+  .shap-pick button.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .wf-row{display:grid; grid-template-columns:130px 1fr 70px; align-items:center; gap:10px; margin:6px 0; font-size:.92em;}
+  .wf-row .nm{color:#cbd5e1;}
+  .wf-track{position:relative; height:22px; background:#0f172a; border-radius:5px;}
+  .wf-mid{position:absolute; left:50%; top:0; bottom:0; width:1px; background:#64748b;}
+  .wf-bar{position:absolute; top:3px; bottom:3px; border-radius:3px;}
+  .wf-bar.pos{background:#22c55e;} .wf-bar.neg{background:#ef4444;}
+  .wf-row .vv{text-align:right; font-weight:700;}
+  .wf-total{display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding:12px 16px; background:#0f172a; border-radius:10px; font-weight:800;}
+  .wf-total .big{font-size:1.5em; color:#a78bfa;}
+
+  .chartwrap{background:#0f172a; border-radius:12px; padding:14px; margin:12px 0;}
+
+  .quiz{border:2px solid #c7d2fe; border-radius:12px; padding:18px 20px; margin:16px 0; background:#f5f6ff;}
+  .quiz .q{font-weight:700; margin:0 0 8px;}
+  .quiz .qnum{display:inline-block; background:var(--brand); color:#fff; border-radius:6px; padding:1px 9px; margin-right:8px; font-size:.85em;}
+  .quiz details{margin-top:8px;} .quiz summary{color:var(--brand-d); font-weight:700; cursor:pointer;}
+  .quiz .ans{margin-top:8px; background:#fff; border-left:4px solid var(--good); padding:10px 14px; border-radius:6px; font-size:.95em;}
+
+  .roadmap{counter-reset:step; margin:14px 0;}
+  .rstep{display:grid; grid-template-columns:48px 1fr; gap:14px; margin:12px 0; align-items:start;}
+  .rstep .rn{width:40px; height:40px; border-radius:50%; background:var(--brand); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center;}
+  .rstep .rb{background:#f8fafc; border:1px solid var(--line); border-radius:10px; padding:12px 16px;}
+  .rstep .rb b{color:var(--brand-d);}
+
+  .glossary{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin:14px 0;}
+  .term-card{border:1px solid var(--line); border-radius:10px; padding:14px 16px; background:#fff;}
+  .term-card dt{font-weight:800; color:#0f172a; margin-bottom:3px;}
+  .term-card dd{margin:0; font-size:.92em; color:var(--sub);}
+
+  footer{text-align:center; color:var(--sub); font-size:.9em; padding:30px 10px;}
+  @media(max-width:820px){
+    body{font-size:16px;}
+    .vs-grid{grid-template-columns:1fr;}
+    header.hero h1{font-size:1.45em;}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <span class="badge">発展編</span>
+  <h1>🌲 故障予測をLightGBMにすると何が変わるか</h1>
+  <p>基礎編では「線形回帰」で故障を予測しました。本編では、前段の予測を <b>LightGBM（勾配ブースティング木）</b> に置き換えると何がどう良くなるか、そして実務で押さえるべき勘所を学びます。</p>
+  <p style="font-size:.98em;opacity:.9;">後段の「最適化（保守リソース割当）」は基礎編のまま。<b>差し替えるのは予測の中身だけ</b>——これが疎結合設計の強みです。</p>
+  <span class="tag">数値を動かして体感する自習対応版 ／ 基礎編の続き</span>
+</header>
+
+<nav class="toc">
+  <a href="#goals">学習目標</a>
+  <a href="#s1">1. なぜLightGBM</a>
+  <a href="#s2">2. 問題の置き方</a>
+  <a href="#s3">3. データとラベル</a>
+  <a href="#s4">4. 時系列で検証</a>
+  <a href="#s5">5. 不均衡としきい値</a>
+  <a href="#s6">6. 確率の較正</a>
+  <a href="#s7">7. 説明性(SHAP)</a>
+  <a href="#s8">8. 最適化へ接続</a>
+  <a href="#s9">9. 運用とロードマップ</a>
+  <a href="#s10">10. 理解度チェック</a>
+  <a href="#s11">11. まとめ・用語集</a>
+</nav>
+
+<div class="wrap">
+
+<div class="goals" id="goals">
+  <h2>🎯 この発展編で身につくこと</h2>
+  <ul>
+    <li>線形回帰の限界と、LightGBM（勾配ブースティング木）が保守予測に向く理由を説明できる</li>
+    <li>故障予測を「2値分類」として設計し、確率の<b>較正</b>・<b>しきい値</b>をコストで決められる</li>
+    <li>不均衡データ・時系列検証・データリークなど、実務でつまずく要所を理解する</li>
+    <li>SHAPで「なぜこの設備が危ないか」を示し、現場と経営の納得を得る</li>
+    <li>予測（LightGBM）と最適化（基礎編）を疎結合でつなぎ、段階的に導入する道筋を描ける</li>
+  </ul>
+  <div class="who">前提：基礎編（線形回帰 × 保守最適化）を学んだ方。所要 約30分。<b>黒い枠のスライダー・ボタンは自由に動かせます</b>。</div>
+</div>
+
+<!-- 1. なぜLightGBM -->
+<section id="s1">
+  <h2 class="sec-title"><span class="sec-num">1</span>なぜLightGBMか — 線形回帰の限界とGBDTの強み</h2>
+  <p class="lead">基礎編の線形回帰は「各要因 × 係数を足す」直線モデルでした。分かりやすい一方、現実の故障は「ある年数を超えると急に増える」「高負荷かつ高温のときだけ危ない」といった<b>非線形・交互作用</b>を含み、直線では表しきれません。</p>
+
+  <div class="vs-grid">
+    <div class="vs-card lin">
+      <h4>📏 線形回帰</h4>
+      <ul>
+        <li>各要因の影響を「直線・独立」と仮定</li>
+        <li>係数で解釈しやすい／少データでも安定</li>
+        <li>非線形・交互作用・しきい値的な効果は苦手</li>
+        <li>確率が0〜100%の外に出ることがある</li>
+      </ul>
+    </div>
+    <div class="vs-card gbdt">
+      <h4>🌲 LightGBM（勾配ブースティング木）</h4>
+      <ul>
+        <li>決定木を多数、誤差を順に減らすよう足し合わせる</li>
+        <li>非線形・交互作用・しきい値効果を自動で捉える</li>
+        <li>欠損やカテゴリ、大量データに強く高速</li>
+        <li>外挿（学習範囲外）は苦手／少故障だと過学習に注意</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout lin">
+    <b>勾配ブースティングの直感：</b> まず弱い予測（浅い木）を作り、その「外し方（誤差）」を次の木が学んで補正、を何百回も繰り返して少しずつ賢くする手法です。LightGBMはこれを高速・省メモリに実装したものです。
+  </div>
+
+  <h3>体験：同じ「稼働年数 → 故障確率」を、直線とGBDTで予測してみる</h3>
+  <p class="lead">スライダーで稼働年数を変え、線形回帰（直線）とLightGBM（段階的な曲線）の予測を比べてください。GBDTは「経年劣化が途中から加速する」現実を捉えられます。</p>
+  <div class="panel-int">
+    <div class="chartwrap"><svg id="curveChart" viewBox="0 0 700 320" style="width:100%;height:auto;"></svg></div>
+    <div class="ctrl">
+      <div class="lbl"><span>稼働年数</span><span><b id="yearVal">12</b> 年</span></div>
+      <input type="range" id="yearRange" min="0" max="25" value="12" step="1">
+    </div>
+    <div class="readouts">
+      <div class="ro"><div class="k">線形回帰の予測</div><div class="v" id="linOut" style="color:#22d3ee;">—</div></div>
+      <div class="ro"><div class="k">LightGBMの予測</div><div class="v" id="gbdtOut" style="color:#a78bfa;">—</div></div>
+    </div>
+    <p style="font-size:.88em;opacity:.85;margin:0;">※ 説明のための模式的なモデルです。実際の値は学習データから決まります。</p>
+  </div>
+  <div class="summary-box"><b>この章のまとめ：</b> 線形回帰は解釈しやすいが直線の制約がある。LightGBMは非線形・交互作用を自動で捉え、表形式の保守データで高い精度が出やすい。ただし学習範囲外の外挿は苦手で、データ量が少ないと過学習しやすい。</div>
+</section>
+
+<!-- 2. 問題の置き方 -->
+<section id="s2">
+  <h2 class="sec-title"><span class="sec-num">2</span>問題の置き方 — 何を予測させるか</h2>
+  <p class="lead">同じ「故障予測」でも、出力の形は選べます。後段の最適化に渡しやすいのは、施設ごとの<b>故障確率</b>です。</p>
+  <table>
+    <thead><tr><th>定式化</th><th>出力</th><th>向いている場面</th><th>最適化との相性</th></tr></thead>
+    <tbody>
+      <tr><td>2値分類（推奨）</td><td class="tleft">30日以内に故障する確率(%)</td><td class="tleft">優先順位付け・出動判断</td><td>緊急度＝確率×重要度に直結</td></tr>
+      <tr><td>回帰</td><td class="tleft">残存寿命（あと何日）</td><td class="tleft">計画保全・部品手配</td><td>納期・段取りの最適化に有効</td></tr>
+      <tr><td>ランキング学習</td><td class="tleft">危険な順の並び</td><td class="tleft">上位n件だけ対応したい</td><td>確率の絶対値が不要な場合に</td></tr>
+    </tbody>
+  </table>
+  <div class="callout key"><b>本編の方針：</b> LightGBMの2値分類で「30日以内の故障確率」を出し、これを基礎編の<b>緊急度（＝故障確率 × 施設の重要度）</b>に変換して最適化へ渡します。基礎編と同じ接続点を使えるのが利点です。</div>
+  <div class="summary-box"><b>この章のまとめ：</b> 予測の出力形は目的で選ぶ。優先順位付け・出動判断なら2値分類の確率が最も扱いやすく、基礎編の最適化にそのまま接続できる。</div>
+</section>
+
+<!-- 3. データとラベル -->
+<section id="s3">
+  <h2 class="sec-title"><span class="sec-num">3</span>データとラベル設計 — 精度の8割はここで決まる</h2>
+  <p class="lead">モデルの良し悪しは、アルゴリズムよりも「どんな特徴量を、どう作るか」で決まります。LightGBMでも同じです。</p>
+
+  <h3>特徴量（説明変数）の作り方</h3>
+  <table>
+    <thead><tr><th>種類</th><th>例</th><th>狙い</th></tr></thead>
+    <tbody>
+      <tr><td>状態</td><td class="tleft">稼働年数、温度・湿度、電圧変動、通信負荷</td><td>いまの状態</td></tr>
+      <tr><td>履歴・集計</td><td class="tleft">直近7日/30日の故障回数、アラート頻度、保守からの経過日数</td><td>「時間窓」で傾向を要約</td></tr>
+      <tr><td>属性</td><td class="tleft">機種、設置環境、部品ロット</td><td>カテゴリとして投入（LightGBMは得意）</td></tr>
+    </tbody>
+  </table>
+
+  <h3>ラベル（目的変数）の決め方</h3>
+  <p>「予測した時点から30日以内に故障したか（1/0）」を答えとして付けます。<b>予測の起点と、結果を見る期間（ホライズン）を明確に</b>そろえることが肝心です。</p>
+  <div class="summary-box"><b>この章のまとめ：</b> 時間窓での集計特徴量が効く。ラベルは「予測起点から○日以内の故障有無」で定義し、起点とホライズンを揃える。カテゴリ変数はLightGBMにそのまま渡せる。</div>
+</section>
+
+<!-- 4. 時系列で検証 -->
+<section id="s4">
+  <h2 class="sec-title"><span class="sec-num">4</span>検証はなぜ「時系列」で分けるのか</h2>
+  <p class="lead">LightGBMは強力なぶん、検証を誤ると「過去にはよく当たるのに本番で外す」状態に陥ります。最大の落とし穴が<b>データリーク</b>と<b>ランダム分割</b>です。</p>
+
+  <div class="callout warn">
+    <b>やってはいけない：</b> データをランダムに学習/検証へ分けること。未来のデータが学習に混じり、実力を過大評価します。<br>
+    <b>正しくは：</b> <b>過去で学習し、より新しい期間で検証</b>する（時系列分割）。本番と同じ「未来を当てる」状況で評価できます。
+  </div>
+  <div class="callout key">
+    <b>リーク（情報漏れ）にも注意：</b> 「故障後にしか分からない値」や「結果を使って作った特徴量」を入れると、当然よく当たりますが本番では使えません。<b>予測時点で実際に手に入る情報だけ</b>で作るのが鉄則です。
+  </div>
+  <div class="summary-box"><b>この章のまとめ：</b> 検証は時系列で分け、未来を当てる形で評価する。予測時点で入手不能な情報（リーク）を排除する。これは基礎編の「外挿の危険」の実務版。</div>
+</section>
+
+<!-- 5. 不均衡としきい値 -->
+<section id="s5">
+  <h2 class="sec-title"><span class="sec-num">5</span>不均衡データとしきい値 — コストで決める</h2>
+  <p class="lead">故障は「めったに起きない」ので、正解率で測ると「全部“故障しない”と答えれば高得点」という罠にはまります。大事なのは<b>見逃さないこと（再現率）</b>と<b>空振りの少なさ（適合率）</b>のバランス。最終的には<b>コスト</b>で判断します。</p>
+
+  <p class="lead">下は20の設備（うち4つが実際に故障＝20%の不均衡）。LightGBMが出した故障確率に対し、「何%以上を“要対応”として出動するか」のしきい値を動かしてみましょう。</p>
+
+  <div class="panel-int">
+    <div class="ctrl">
+      <div class="lbl"><span>出動するしきい値（この確率以上で出動）</span><span><b id="thVal">50</b>%</span></div>
+      <input type="range" id="thRange" min="0" max="100" value="50" step="1">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
+      <div>
+        <h4 style="color:#fff;margin:6px 0;">混同行列</h4>
+        <div class="cm">
+          <div class="h"></div><div class="h">実際: 故障</div><div class="h">実際: 正常</div>
+          <div class="h">出動した</div><div class="tp"><div class="v" id="cmTP">0</div>的中(TP)</div><div class="fp"><div class="v" id="cmFP">0</div>空振り(FP)</div>
+          <div class="h">出動せず</div><div class="fn"><div class="v" id="cmFN">0</div>見逃し(FN)</div><div class="tn"><div class="v" id="cmTN">0</div>正常(TN)</div>
+        </div>
+      </div>
+      <div>
+        <h4 style="color:#fff;margin:6px 0;">指標とコスト</h4>
+        <div class="readouts" style="grid-template-columns:1fr 1fr;">
+          <div class="ro"><div class="k">適合率（出動の的中率）</div><div class="v" id="precOut" style="color:#fbbf24;">—</div></div>
+          <div class="ro"><div class="k">再現率（故障の捕捉率）</div><div class="v" id="recOut" style="color:#34d399;">—</div></div>
+        </div>
+        <div class="ctrl" style="margin-top:10px;">
+          <div class="lbl" style="font-size:.85em;"><span>空振り1回のコスト</span><span><b id="cFPval">5</b>万円</span></div>
+          <input type="range" id="cFP" min="1" max="30" value="5" step="1">
+        </div>
+        <div class="ctrl">
+          <div class="lbl" style="font-size:.85em;"><span>見逃し1回のコスト</span><span><b id="cFNval">100</b>万円</span></div>
+          <input type="range" id="cFN" min="20" max="300" value="100" step="10">
+        </div>
+        <div class="ro" style="background:#7c3aed;margin-top:6px;"><div class="k">この設定の合計コスト</div><div class="v" id="costOut">—</div></div>
+      </div>
+    </div>
+    <p id="costHint" style="margin:12px 0 0;font-size:.92em;opacity:.95;"></p>
+  </div>
+
+  <div class="callout key"><b>勘所：</b> 見逃しが高くつく（設備停止の損失が大きい）ほど、しきい値を<b>下げて</b>網を広く張る方が総コストは下がります。逆に出動が高コストなら、しきい値を上げて確度の高い案件に絞る。<b>正解は固定ではなく、コスト構造で決まります。</b></div>
+  <div class="summary-box"><b>この章のまとめ：</b> 不均衡では正解率は当てにならない。適合率・再現率で見て、しきい値は「空振り」と「見逃し」のコストで決める。これは基礎編で重みを方針で決めたのと同じ「価値判断の数値化」。</div>
+</section>
+
+<!-- 6. 較正 -->
+<section id="s6">
+  <h2 class="sec-title"><span class="sec-num">6</span>確率の較正（キャリブレーション）</h2>
+  <p class="lead">「故障確率70%」と出たとき、本当に7割で故障してほしい。モデルの出す確率が実態とずれていると、後段の最適化に渡す<b>緊急度（＝確率×重要度）</b>が歪み、優先順位を誤ります。</p>
+  <div class="callout key"><b>較正とは：</b> 「70%と予測した群が、実際にだいたい70%故障している」状態に補正すること（等張回帰やシグモイド補正など）。LightGBMの生の出力は確率としてずれることがあるため、確率を意思決定に使うなら較正を確認・実施します。</div>
+  <div class="callout warn"><b>なぜ重要か：</b> 較正が崩れていると、たとえばF1とF3の優先順位が入れ替わり、最適化が「間違った現場」に最良の班を送ってしまう。<b>予測の数字を信じて意思決定するほど、較正の責任は重く</b>なります。</div>
+  <div class="summary-box"><b>この章のまとめ：</b> 確率を意思決定（緊急度）に使うなら較正が必須。較正済みの確率でないと、最適化の優先順位そのものが歪む。</div>
+</section>
+
+<!-- 7. SHAP -->
+<section id="s7">
+  <h2 class="sec-title"><span class="sec-num">7</span>説明性 — SHAPで「なぜ危ないか」を示す</h2>
+  <p class="lead">LightGBMは精度が高い反面、中身が見えにくい。そこで<b>SHAP</b>を使うと、基礎編で線形回帰の係数を分解したのと同じように、<b>1件ごとに「どの要因が予測をどれだけ押し上げ／押し下げたか」</b>を示せます。現場技術者の納得と、経営の説明責任の両方に効きます。</p>
+
+  <p class="lead">施設を選ぶと、平均的な水準（基準値）から各要因がどう寄与して予測に至ったかが見えます。<span style="color:#16a34a;font-weight:700;">緑＝リスクを上げた要因</span>／<span style="color:#dc2626;font-weight:700;">赤＝下げた要因</span>。</p>
+  <div class="panel-int">
+    <div class="shap-pick" id="shapPick"></div>
+    <div id="shapWF"></div>
+  </div>
+  <div class="callout key"><b>使いどころ：</b> 「F1渋谷が要対応なのは“過去故障回数”と“稼働年数”が効いているから」と一目で説明でき、対策（部品先行手配・計画保全）にもつながります。全体の傾向（どの要因が普段から効くか）も、個別の理由も、SHAPで一貫して語れます。</div>
+  <div class="summary-box"><b>この章のまとめ：</b> SHAPは予測を要因ごとの寄与に分解する。基礎編の係数分解の“一件ごと版”で、現場の納得・経営の説明責任・対策立案に直結する。</div>
+</section>
+
+<!-- 8. 最適化へ接続 -->
+<section id="s8">
+  <h2 class="sec-title"><span class="sec-num">8</span>予測を最適化へ接続する — 何が良くなるか</h2>
+  <p class="lead">LightGBMの較正済み故障確率を、基礎編と同じく <b>緊急度＝故障確率 × 重要度</b> に変換し、保守班割当の最適化へ渡します。接続点が同じなので、<b>予測の部品だけ差し替え</b>られます。</p>
+  <div class="callout good">
+    <b>線形回帰版から何が良くなる？</b><br>
+    ① 予測精度が上がり、緊急度の見立てが現実に近づく（最適化の入力が良くなる）。<br>
+    ② 非線形・交互作用を捉えるため、「高負荷×高温の局だけ危ない」といった現場の実感に合う優先順位が出る。<br>
+    ③ SHAPで「なぜこの割当か」を予測根拠まで遡って説明でき、現場が動きやすい。
+  </div>
+  <div class="callout warn"><b>変わらない原則：</b> 後段は依然として「決定変数・目的関数・制約条件」の最適化。<b>重み（方針）が変われば最適な割当も変わる</b>のは基礎編と同じ。予測が良くなっても、方針の決定は人の仕事です。</div>
+  <div class="summary-box"><b>この章のまとめ：</b> 予測（LightGBM）と最適化は疎結合。較正済み確率→緊急度→最適化の接続点は基礎編と共通なので、予測だけ強化できる。精度・現場適合・説明性が上がる一方、方針（重み）決定は人が担う。</div>
+</section>
+
+<!-- 9. 運用とロードマップ -->
+<section id="s9">
+  <h2 class="sec-title"><span class="sec-num">9</span>運用（MLOps）と導入ロードマップ</h2>
+  <p class="lead">モデルは作って終わりではありません。設備は経年し季節も変わるため、放置すると予測がずれていきます（ドリフト）。小さく始め、効果を確かめながら広げます。</p>
+
+  <h3>段階的な導入ステップ</h3>
+  <div class="roadmap">
+    <div class="rstep"><div class="rn">0</div><div class="rb"><b>準備・ベースライン：</b>データ収集とラベル定義。まず簡易ルールや線形回帰で“基準線”を作り、改善幅を測れるようにする。</div></div>
+    <div class="rstep"><div class="rn">1</div><div class="rb"><b>PoC：</b>一地域・一設備種でLightGBMを試作。時系列検証で実力を確認し、SHAPで妥当性を点検。</div></div>
+    <div class="rstep"><div class="rn">2</div><div class="rb"><b>較正としきい値：</b>確率を較正し、しきい値を「空振り×見逃し」のコストで決定。緊急度に変換。</div></div>
+    <div class="rstep"><div class="rn">3</div><div class="rb"><b>最適化と接続・シャドー運用：</b>基礎編の割当最適化につなぎ、当面は人の判断と並走（提案のみ）させて検証。</div></div>
+    <div class="rstep"><div class="rn">4</div><div class="rb"><b>本番・監視：</b>ドリフト監視、定期再学習、予測ログとフィードバック（実際に故障したか）でモデルを更新。効果（停止時間・出動回数）を測る。</div></div>
+  </div>
+
+  <h3>落とし穴と限界（深く考えるために）</h3>
+  <div class="callout warn">
+    <ul style="margin:0;padding-left:20px;">
+      <li><b>外挿に弱い：</b>木モデルは学習範囲外（例：未経験の稼働年数）の予測が苦手。</li>
+      <li><b>過学習：</b>木を増やしすぎ・複雑にしすぎると本番で外す。早期終了・正則化・交差検証で抑える。</li>
+      <li><b>少故障問題：</b>故障件数が極端に少ないと、まず異常検知や単純モデルが安定する場合がある。</li>
+      <li><b>相関≠因果：</b>「効いている特徴量」が原因とは限らない。施策に使うときは因果の検討を。</li>
+      <li><b>アラート疲れ：</b>出しすぎると現場が反応しなくなる。件数を運用可能な水準に絞る。</li>
+      <li><b>ブラックボックス化：</b>SHAP等で説明性を担保し、判断根拠を残す。</li>
+    </ul>
+  </div>
+
+  <h3>次の一歩（道具）</h3>
+  <table>
+    <thead><tr><th>やりたいこと</th><th>道具</th></tr></thead>
+    <tbody>
+      <tr><td>LightGBMで予測を作る</td><td class="tleft">Python：lightgbm、前処理に pandas、評価に scikit-learn</td></tr>
+      <tr><td>説明性を出す</td><td class="tleft">shap ライブラリ（要因分解・寄与の可視化）</td></tr>
+      <tr><td>確率を較正する</td><td class="tleft">scikit-learn の CalibratedClassifierCV（等張回帰／シグモイド）</td></tr>
+      <tr><td>後段の割当最適化</td><td class="tleft">Excelソルバー（小規模）／ Python の PuLP・OR-Tools（本格）</td></tr>
+    </tbody>
+  </table>
+  <div class="summary-box"><b>この章のまとめ：</b> 小さくPoC→較正・しきい値→最適化接続→シャドー運用→本番＋監視・再学習、と段階を踏む。外挿・過学習・少故障・アラート疲れなどの限界を運用に織り込む。</div>
+</section>
+
+<!-- 10. 理解度チェック -->
+<section id="s10">
+  <h2 class="sec-title"><span class="sec-num">10</span>理解度チェック（答えは隠してあります）</h2>
+
+  <div class="quiz">
+    <p class="q"><span class="qnum">Q1</span>線形回帰では捉えにくく、LightGBMが得意とする関係を2つ挙げよ。</p>
+    <details><summary>答えを見る</summary><div class="ans"><b>非線形（例：ある稼働年数を超えると急に故障が増える）と、交互作用（例：高負荷かつ高温のときだけ危ない）。</b>直線・各要因独立を仮定する線形回帰では表しにくいが、木の分割の組み合わせで自動的に捉えられる。第1章のグラフで、直線とGBDTの段階的な曲線の差として確認できる。</div></details>
+  </div>
+  <div class="quiz">
+    <p class="q"><span class="qnum">Q2</span>故障予測の検証で、データをランダムに学習/検証へ分けてはいけないのはなぜ？</p>
+    <details><summary>答えを見る</summary><div class="ans"><b>未来の情報が学習に混じり、実力を過大評価してしまうから（リーク）。</b>本番は「未来を当てる」状況なので、過去で学習し新しい期間で検証する時系列分割にする。予測時点で入手できない値を特徴量に入れないことも重要。</div></details>
+  </div>
+  <div class="quiz">
+    <p class="q"><span class="qnum">Q3</span>第5章で「見逃し1回のコスト」を大きく上げると、最小コストになる出動しきい値は上がる？下がる？ 試して理由を説明せよ。</p>
+    <details><summary>答えを見る</summary><div class="ans"><b>下がる。</b>見逃しが高くつくほど、多少の空振りを許してでも網を広げ、故障を取りこぼさない方が総コストが小さくなるため。第5章のスライダーで、見逃しコストを上げるとしきい値を下げた方が合計コストが下がることを確認できる。</div></details>
+  </div>
+  <div class="quiz">
+    <p class="q"><span class="qnum">Q4</span>確率の「較正」を怠ると、後段の最適化に具体的にどんな悪影響がある？</p>
+    <details><summary>答えを見る</summary><div class="ans"><b>緊急度（＝確率×重要度）が歪み、施設の優先順位が入れ替わって、最適な班を“間違った現場”に送ってしまう。</b>確率を意思決定に使うほど較正の責任は重い。70%が本当に7割を意味する状態に補正してから渡す。</div></details>
+  </div>
+  <div class="quiz">
+    <p class="q"><span class="qnum">Q5</span>精度が上がっても「重みを決める仕事」が人に残るのはなぜ？</p>
+    <details><summary>答えを見る</summary><div class="ans"><b>重みは「何を優先するか」という方針＝価値判断であり、データから学習する種類のものではないから。</b>LightGBMが良くするのは前段の予測精度。後段の最適化で緊急対応を優先するか適材適所を優先するかは、経営・現場の判断として人が決める（基礎編の核心と同じ）。</div></details>
+  </div>
+</section>
+
+<!-- 11. まとめ・用語集 -->
+<section id="s11">
+  <h2 class="sec-title"><span class="sec-num">11</span>まとめと用語集</h2>
+  <h3>全体のまとめ（3行で）</h3>
+  <div class="callout good">
+    ① LightGBMは非線形・交互作用を捉え、表形式の保守データで予測精度を上げやすい。<br>
+    ② 実務の要所は「時系列検証・不均衡としきい値・確率の較正・SHAPによる説明」。<br>
+    ③ 較正済み確率を緊急度に変換して基礎編の最適化に接続すれば、<b>予測の部品だけ差し替え</b>て生産性を高められる。方針（重み）の決定は人の仕事のまま。
+  </div>
+  <h3>用語集</h3>
+  <div class="glossary">
+    <div class="term-card"><dl><dt>勾配ブースティング木(GBDT)</dt><dd>多数の決定木を、誤差を順に補正するよう足し合わせる予測手法。</dd></dl></div>
+    <div class="term-card"><dl><dt>LightGBM</dt><dd>GBDTを高速・省メモリに実装したライブラリ。表形式データに強い。</dd></dl></div>
+    <div class="term-card"><dl><dt>2値分類</dt><dd>「起きる/起きない」を確率で予測する問題設定。</dd></dl></div>
+    <div class="term-card"><dl><dt>クラス不均衡</dt><dd>故障など片方の事例が極端に少ない状態。正解率が当てにならない。</dd></dl></div>
+    <div class="term-card"><dl><dt>適合率</dt><dd>出動のうち本当に故障だった割合（空振りの少なさ）。</dd></dl></div>
+    <div class="term-card"><dl><dt>再現率</dt><dd>実際の故障のうち捕捉できた割合（見逃しの少なさ）。</dd></dl></div>
+    <div class="term-card"><dl><dt>しきい値</dt><dd>確率が何%以上なら「対応する」と決める境目。コストで調整する。</dd></dl></div>
+    <div class="term-card"><dl><dt>較正(キャリブレーション)</dt><dd>予測確率を実際の頻度に合わせる補正。意思決定に確率を使うとき必須。</dd></dl></div>
+    <div class="term-card"><dl><dt>SHAP</dt><dd>予測を要因ごとの寄与に分解し、一件ごとに理由を説明する手法。</dd></dl></div>
+    <div class="term-card"><dl><dt>データリーク</dt><dd>予測時点で本来使えない情報が紛れ込み、見かけの精度を上げる誤り。</dd></dl></div>
+    <div class="term-card"><dl><dt>時系列分割</dt><dd>過去で学習し未来で検証する分け方。本番に即した評価ができる。</dd></dl></div>
+    <div class="term-card"><dl><dt>ドリフト</dt><dd>時間とともにデータ傾向が変わり、モデルの精度が劣化する現象。</dd></dl></div>
+  </div>
+  <p class="lead" style="margin-top:18px;">基礎編（線形回帰 × 保守最適化）と本発展編をセットで使うと、「予測を強化する」と「意思決定を最適化する」の両輪が一気通貫で学べます。</p>
+</section>
+
+<footer>
+  発展編：故障予測 × LightGBM ／ 予測の部品を差し替えて、保守の生産性をさらに高める
+</footer>
+
+</div>
+
+<script>
+// ===== 1. 線形 vs GBDT 曲線 =====
+function linPredict(year){return Math.max(0,Math.min(100, 5 + 3.2*year));}
+function gbdtPredict(year){
+  if(year<5) return 8;
+  if(year<8) return 20;
+  if(year<11) return 38;
+  if(year<14) return 60;
+  if(year<18) return 80;
+  return 90;
+}
+function drawCurve(){
+  const W=700,H=320,padL=56,padB=42,padT=18,padR=14;
+  const x0=padL,x1=W-padR,y0=H-padB,y1=padT;
+  const X=y=>x0+(x1-x0)*(y/25);
+  const Y=p=>y0+(y1-y0)*(p/100);
+  let s=`<rect x="0" y="0" width="${W}" height="${H}" fill="#0f172a"/>`;
+  // grid + y labels
+  for(let p=0;p<=100;p+=20){s+=`<line x1="${x0}" y1="${Y(p)}" x2="${x1}" y2="${Y(p)}" stroke="#1e293b"/><text x="${x0-8}" y="${Y(p)+4}" fill="#64748b" font-size="11" text-anchor="end">${p}%</text>`;}
+  for(let yr=0;yr<=25;yr+=5){s+=`<text x="${X(yr)}" y="${y0+18}" fill="#64748b" font-size="11" text-anchor="middle">${yr}年</text>`;}
+  s+=`<text x="${(x0+x1)/2}" y="${H-4}" fill="#94a3b8" font-size="12" text-anchor="middle">稼働年数</text>`;
+  // linear line
+  s+=`<line x1="${X(0)}" y1="${Y(linPredict(0))}" x2="${X(25)}" y2="${Y(linPredict(25))}" stroke="#22d3ee" stroke-width="3"/>`;
+  // gbdt step path
+  let d=`M ${X(0)} ${Y(gbdtPredict(0))}`;
+  for(let yr=0;yr<=25;yr+=0.25){d+=` L ${X(yr)} ${Y(gbdtPredict(yr))}`;}
+  s+=`<path d="${d}" fill="none" stroke="#a78bfa" stroke-width="3"/>`;
+  // marker
+  const yr=+document.getElementById('yearRange').value;
+  s+=`<line x1="${X(yr)}" y1="${y1}" x2="${X(yr)}" y2="${y0}" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+  s+=`<circle cx="${X(yr)}" cy="${Y(linPredict(yr))}" r="6" fill="#22d3ee" stroke="#fff" stroke-width="2"/>`;
+  s+=`<circle cx="${X(yr)}" cy="${Y(gbdtPredict(yr))}" r="6" fill="#a78bfa" stroke="#fff" stroke-width="2"/>`;
+  // legend
+  s+=`<rect x="${x1-176}" y="${y1+4}" width="170" height="44" rx="6" fill="#1e293b" opacity="0.9"/>`;
+  s+=`<line x1="${x1-166}" y1="${y1+18}" x2="${x1-146}" y2="${y1+18}" stroke="#22d3ee" stroke-width="3"/><text x="${x1-140}" y="${y1+22}" fill="#e2e8f0" font-size="11">線形回帰</text>`;
+  s+=`<line x1="${x1-166}" y1="${y1+36}" x2="${x1-146}" y2="${y1+36}" stroke="#a78bfa" stroke-width="3"/><text x="${x1-140}" y="${y1+40}" fill="#e2e8f0" font-size="11">LightGBM</text>`;
+  document.getElementById('curveChart').innerHTML=s;
+  document.getElementById('yearVal').textContent=yr;
+  document.getElementById('linOut').textContent=linPredict(yr).toFixed(0)+'%';
+  document.getElementById('gbdtOut').textContent=gbdtPredict(yr).toFixed(0)+'%';
+}
+document.getElementById('yearRange').oninput=drawCurve;
+
+// ===== 5. しきい値とコスト =====
+const sample=[{p:91,y:1},{p:82,y:1},{p:74,y:1},{p:38,y:1},
+{p:69,y:0},{p:61,y:0},{p:55,y:0},{p:48,y:0},{p:44,y:0},{p:39,y:0},{p:33,y:0},{p:30,y:0},{p:26,y:0},{p:22,y:0},{p:18,y:0},{p:15,y:0},{p:12,y:0},{p:8,y:0},{p:5,y:0},{p:3,y:0}];
+const nPos=sample.filter(d=>d.y===1).length;
+function confusion(th){let TP=0,FP=0,FN=0,TN=0;for(const d of sample){const pred=d.p>=th;if(pred&&d.y)TP++;else if(pred&&!d.y)FP++;else if(!pred&&d.y)FN++;else TN++;}return{TP,FP,FN,TN};}
+function totalCost(th,cFP,cFN){const c=confusion(th);return c.FP*cFP+c.FN*cFN;}
+function minCostTh(cFP,cFN){let best={th:0,c:Infinity};for(let th=0;th<=100;th++){const c=totalCost(th,cFP,cFN);if(c<best.c)best={th,c};}return best;}
+function renderThreshold(){
+  const th=+document.getElementById('thRange').value;
+  const cFP=+document.getElementById('cFP').value;
+  const cFN=+document.getElementById('cFN').value;
+  document.getElementById('thVal').textContent=th;
+  document.getElementById('cFPval').textContent=cFP;
+  document.getElementById('cFNval').textContent=cFN;
+  const c=confusion(th);
+  document.getElementById('cmTP').textContent=c.TP; document.getElementById('cmFP').textContent=c.FP;
+  document.getElementById('cmFN').textContent=c.FN; document.getElementById('cmTN').textContent=c.TN;
+  const prec=(c.TP+c.FP)?100*c.TP/(c.TP+c.FP):0;
+  const rec=100*c.TP/nPos;
+  document.getElementById('precOut').textContent=(c.TP+c.FP)?prec.toFixed(0)+'%':'—';
+  document.getElementById('recOut').textContent=rec.toFixed(0)+'%';
+  const cost=totalCost(th,cFP,cFN);
+  document.getElementById('costOut').textContent=cost+'万円';
+  const mb=minCostTh(cFP,cFN);
+  document.getElementById('costHint').innerHTML=
+    `この費用設定では、合計コストが最小になる出動しきい値は <b>約${mb.th}%</b>（そのときのコスト ${mb.c}万円）。`+
+    (th<=mb.th+3&&th>=mb.th-3?' ✅ いまの設定はほぼ最適です。':' スライダーを動かして最小コストを探してみましょう。');
+}
+['thRange','cFP','cFN'].forEach(id=>document.getElementById(id).oninput=renderThreshold);
+
+// ===== 7. SHAP waterfall =====
+const shapBase=45;
+const shapData={
+  F1:{name:"渋谷中央局", contrib:[["過去故障回数",18],["稼働年数",12],["通信負荷",6],["経過日数",4]]},
+  F2:{name:"横浜港北基地局", contrib:[["過去故障回数",8],["稼働年数",6],["通信負荷",4],["経過日数",2],["直近の保守",-7]]},
+  F3:{name:"多摩ニュータウン局", contrib:[["稼働年数",-8],["通信負荷",-5],["過去故障回数",-4],["経過日数",3],["直近の保守",2]]},
+};
+function renderShap(fac){
+  document.querySelectorAll('#shapPick button').forEach(b=>b.classList.toggle('active',b.dataset.f===fac));
+  const d=shapData[fac];
+  const total=shapBase+d.contrib.reduce((a,[,v])=>a+v,0);
+  const maxAbs=Math.max(...d.contrib.map(([,v])=>Math.abs(v)),1);
+  let rows=`<div class="wf-row"><span class="nm">基準値（平均）</span>
+    <div class="wf-track"><div class="wf-mid"></div><div class="wf-bar pos" style="left:50%;width:0"></div></div>
+    <span class="vv" style="color:#94a3b8;">${shapBase}%</span></div>`;
+  rows+=d.contrib.map(([nm,v])=>{
+    const w=Math.abs(v)/maxAbs*48; // 最大48%幅（中心から）
+    const style=v>=0?`left:50%;width:${w}%`:`right:50%;width:${w}%`;
+    return `<div class="wf-row"><span class="nm">${nm}</span>
+      <div class="wf-track"><div class="wf-mid"></div><div class="wf-bar ${v>=0?'pos':'neg'}" style="${style}"></div></div>
+      <span class="vv" style="color:${v>=0?'#22c55e':'#ef4444'};">${v>=0?'+':''}${v}</span></div>`;
+  }).join('');
+  document.getElementById('shapWF').innerHTML=rows+
+    `<div class="wf-total"><span>予測（故障確率）</span><span class="big">${total}%</span></div>`;
+}
+function buildShapPick(){
+  document.getElementById('shapPick').innerHTML=Object.keys(shapData).map(k=>`<button data-f="${k}">${k} ${shapData[k].name}</button>`).join('');
+  document.querySelectorAll('#shapPick button').forEach(b=>b.onclick=()=>renderShap(b.dataset.f));
+}
+
+// ===== 初期化 =====
+drawCurve();
+renderThreshold();
+buildShapPick();
+renderShap('F1');
+</script>
+</body>
+</html>
