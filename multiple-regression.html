@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>重回帰分析の3D可視化 ― 当てはまりの良い平面</title>
+<title>回帰分析の3D可視化 ― 単回帰から重回帰へ</title>
 <style>
   :root{
     --ink:#10243e;        /* 濃紺 */
@@ -26,13 +26,14 @@
       var(--paper);
     color:var(--ink);
     font-family:"Meiryo UI","Hiragino Kaku Gothic ProN",sans-serif;
-    display:flex;flex-direction:column;min-height:100%;
-    overflow-x:hidden;
+    display:flex;flex-direction:column;min-height:100vh;
+    overflow-x:hidden;overflow-y:auto;
   }
   header{
-    padding:22px 28px 14px;
+    padding:16px 28px 0;
     border-bottom:2px solid var(--ink);
-    display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 20px;
+    display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px 20px;
+    flex-shrink:0;
   }
   .eyebrow{
     font-size:12px;letter-spacing:.32em;color:var(--accent);
@@ -48,14 +49,74 @@
   }
   .lead{
     flex-basis:100%;font-size:13.5px;color:var(--muted);
-    max-width:760px;line-height:1.6;margin-top:2px;
+    max-width:780px;line-height:1.6;margin-top:2px;
   }
-  main{flex:1;display:flex;flex-wrap:wrap;min-height:0}
+  /* ---- モード切替タブ ---- */
+  .tabs{
+    flex-basis:100%;display:flex;gap:0;margin-top:14px;
+  }
+  .tab{
+    appearance:none;border:2px solid var(--ink);border-bottom:none;
+    background:transparent;color:var(--ink);
+    font-family:inherit;font-size:13.5px;font-weight:700;letter-spacing:.04em;
+    padding:11px 20px 10px;cursor:pointer;position:relative;top:2px;
+    transition:background .15s, color .15s;
+    display:flex;align-items:center;gap:9px;
+  }
+  .tab + .tab{border-left:none}
+  .tab .tnum{
+    font-family:"Times New Roman",serif;font-style:italic;font-size:15px;
+    color:var(--accent);
+  }
+  .tab:hover:not(.active){background:rgba(16,36,62,.06)}
+  .tab.active{
+    background:var(--ink);color:var(--paper);
+  }
+  .tab.active .tnum{color:#ffd9a8}
+
+  main{flex:1 0 auto;display:flex;flex-wrap:wrap;min-height:0}
+
+  /* 単回帰モードで左に出す項目説明カラム */
+  #sideLegend{
+    flex:0 0 188px;border-right:2px solid var(--ink);
+    padding:20px 16px 20px 20px;display:none;flex-direction:column;gap:14px;
+    background:rgba(243,240,231,.55);
+  }
+  body.mode-simple #sideLegend{display:flex}
+  #sideLegend h2{
+    font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--accent);border-bottom:1px solid var(--grid);padding-bottom:6px;
+  }
+  .sl-item{display:flex;gap:9px;align-items:flex-start;font-size:13px;line-height:1.5}
+  .sl-item .swatch{margin-top:4px;flex:0 0 auto}
+  .sl-item b{font-weight:700}
+  .sl-sub{font-size:11px;color:var(--muted)}
+  .sl-note{
+    font-size:11.5px;color:var(--muted);line-height:1.6;
+    border-top:1px dotted var(--grid);padding-top:12px;margin-top:2px;
+  }
+  /* 単回帰のときはグラフ内オーバーレイ凡例は隠す（左カラムに移したため） */
+  body.mode-simple .legend{display:none}
+  @media(max-width:880px){
+    #sideLegend{flex-basis:100%;border-right:none;border-bottom:2px solid var(--ink);overflow-y:visible}
+  }
   #stage{
-    position:relative;flex:1 1 560px;min-height:460px;
+    position:relative;flex:1 1 560px;
+    height:calc(100vh - 232px);min-height:430px;
     background:radial-gradient(120% 120% at 50% 35%, #fbfaf5 0%, #ece7da 70%, #e2ddcd 100%);
   }
   canvas{display:block}
+  /* WebGL(3D)キャンバスもstageに重ねて、stageの高さを押し広げないようにする */
+  #stage > canvas{position:absolute;inset:0;width:100%;height:100%}
+  /* 単回帰の2Dグラフ用キャンバス（stageに重ねる） */
+  #canvas2d{
+    position:absolute;inset:0;width:100%;height:100%;
+    display:none;z-index:2;
+  }
+  body.mode-simple #canvas2d{display:block}
+  /* 単回帰時はWebGL(3D)を隠し、2Dを主役にする */
+  body.mode-simple #stage > canvas:not(#canvas2d){visibility:hidden}
+  body.mode-simple .stage-tag{display:none}
   .stage-tag{
     position:absolute;left:16px;bottom:14px;font-size:11px;
     letter-spacing:.18em;color:var(--muted);text-transform:uppercase;
@@ -69,15 +130,20 @@
     box-shadow:2px 2px 0 rgba(16,36,62,.08);
   }
   .legend b{font-weight:700}
+  .legend .row-x2{transition:opacity .3s}
   .swatch{display:inline-block;width:11px;height:11px;border-radius:2px;
     margin-right:6px;vertical-align:-1px}
   .panel{
     flex:0 0 312px;border-left:2px solid var(--ink);
-    padding:20px 20px 24px;display:flex;flex-direction:column;gap:18px;
+    padding:16px 20px 18px;display:flex;flex-direction:column;gap:13px;
     background:rgba(243,240,231,.55);
   }
   @media(max-width:880px){
-    .panel{flex-basis:100%;border-left:none;border-top:2px solid var(--ink)}
+    .panel{flex-basis:100%;border-left:none;border-top:2px solid var(--ink);overflow-y:visible}
+  }
+  /* 狭い画面（縦積みレイアウト）では全体スクロール、グラフは画面の6割の高さ */
+  @media(max-width:880px){
+    #stage{height:62vh;min-height:360px}
   }
   .panel h2{font-size:12px;letter-spacing:.22em;text-transform:uppercase;
     color:var(--accent);border-bottom:1px solid var(--grid);padding-bottom:6px}
@@ -91,11 +157,14 @@
   .formula .v1{color:var(--x1);font-weight:700}
   .formula .v2{color:var(--x2);font-weight:700}
   .formula .vy{color:var(--yc);font-weight:700}
+  /* 重回帰モードでだけ現れる項 */
+  .term-x2{transition:opacity .3s}
   .coef-row{display:flex;justify-content:space-between;align-items:baseline;
     font-size:13px;padding:3px 0;border-bottom:1px dotted var(--grid)}
   .coef-row .name{color:var(--muted)}
   .coef-row .val{font-family:"Times New Roman",serif;font-size:16px;font-weight:700;
     font-variant-numeric:tabular-nums}
+  .coef-row.row-a2{transition:opacity .3s}
 
   .metric{
     display:flex;align-items:baseline;gap:8px;justify-content:space-between;
@@ -134,25 +203,44 @@
 <body>
 <header>
   <div style="flex-basis:100%">
-    <div class="eyebrow">重回帰分析 ハンズオン ／ 3D Visualization</div>
+    <div class="eyebrow">回帰分析 ハンズオン ／ 3D Visualization</div>
   </div>
-  <h1>2つの説明変数と1つの目的変数を、立体で見る<br>
-    <span class="eq">Y = a₁X₁ + a₂X₂ + b</span></h1>
-  <p class="lead">
-    説明変数が2つになると、当てはめるのは「直線」ではなく
-    <b>回帰平面</b>になります。各点から平面までの縦の隔たり（残差）の二乗和が
-    最小になるように、平面が空間にフィットしていく様子をアニメーションで確認できます。
+  <h1 id="title">説明変数1つを、立体で見る<br>
+    <span class="eq" id="titleEq">Y = a₁X₁ + b</span></h1>
+  <p class="lead" id="lead">
+    説明変数が1つのとき、当てはめるのは1本の<b>回帰直線</b>です。
+    各点から直線までの縦の隔たり（残差）の二乗和が最小になるように、
+    直線が当てはまっていく様子をアニメーションで確認できます。
     ドラッグで視点を回転、スクロールでズームできます。
   </p>
+
+  <div class="tabs">
+    <button class="tab active" id="tabSimple">
+      <span class="tnum">①</span>単回帰（直線）
+    </button>
+    <button class="tab" id="tabMulti">
+      <span class="tnum">②</span>重回帰（平面）
+    </button>
+  </div>
 </header>
 
 <main>
+  <div id="sideLegend" aria-hidden="false">
+    <h2>項目の説明</h2>
+    <div class="sl-item"><span class="swatch" style="background:var(--x1)"></span><div><b>X₁</b>：営業訪問回数<br><span class="sl-sub">横軸（説明変数）</span></div></div>
+    <div class="sl-item"><span class="swatch" style="background:var(--yc)"></span><div><b>Y</b>：売上<br><span class="sl-sub">縦軸（目的変数）</span></div></div>
+    <div class="sl-item"><span class="swatch" style="background:var(--accent)"></span><div><b>回帰直線</b><br><span class="sl-sub">当てはめた予測式</span></div></div>
+    <div class="sl-item"><span class="swatch" style="background:var(--accent2)"></span><div><b>残差</b><br><span class="sl-sub">実測−予測の縦の隔たり</span></div></div>
+    <div class="sl-note">点が直線の近くに集まるほど、残差が小さく当てはまりが良いことを表します。</div>
+  </div>
+
   <div id="stage">
+    <canvas id="canvas2d"></canvas>
     <div class="legend">
       <div><span class="swatch" style="background:var(--x1)"></span><b>X₁</b>：営業訪問回数</div>
-      <div><span class="swatch" style="background:var(--x2)"></span><b>X₂</b>：提案件数</div>
+      <div class="row-x2"><span class="swatch" style="background:var(--x2)"></span><b>X₂</b>：提案件数</div>
       <div><span class="swatch" style="background:var(--yc)"></span><b>Y</b>：売上（目的変数）</div>
-      <div><span class="swatch" style="background:var(--accent)"></span>回帰平面</div>
+      <div><span class="swatch" style="background:var(--accent)"></span><span id="lgFit">回帰直線</span></div>
       <div><span class="swatch" style="background:var(--accent2)"></span>残差（実測−予測）</div>
     </div>
     <div class="stage-tag">drag to rotate ・ scroll to zoom</div>
@@ -163,13 +251,14 @@
       <h2>予測モデル</h2>
       <div class="formula" style="margin-top:10px">
         <span class="vy">Y</span> =
-        <span class="b" id="fA1">0.00</span>·<span class="v1">X₁</span> +
-        <span class="b" id="fA2">0.00</span>·<span class="v2">X₂</span> +
+        <span class="b" id="fA1">0.00</span>·<span class="v1">X₁</span><span
+          class="term-x2" id="termX2"> +
+        <span class="b" id="fA2">0.00</span>·<span class="v2">X₂</span></span> +
         <span class="b" id="fB">0.0</span>
       </div>
       <div style="margin-top:12px">
         <div class="coef-row"><span class="name"><span class="swatch" style="background:var(--x1)"></span>係数 a₁（訪問回数の効き）</span><span class="val" id="cA1">–</span></div>
-        <div class="coef-row"><span class="name"><span class="swatch" style="background:var(--x2)"></span>係数 a₂（提案件数の効き）</span><span class="val" id="cA2">–</span></div>
+        <div class="coef-row row-a2" id="rowA2"><span class="name"><span class="swatch" style="background:var(--x2)"></span>係数 a₂（提案件数の効き）</span><span class="val" id="cA2">–</span></div>
         <div class="coef-row"><span class="name">定数項 b</span><span class="val" id="cB">–</span></div>
       </div>
     </div>
@@ -190,17 +279,17 @@
 
     <div class="controls">
       <h2>操作</h2>
-      <button class="btn" id="playBtn">▶ 平面を現して当てはめる</button>
+      <button class="btn" id="playBtn">▶ 直線を現して当てはめる</button>
       <div class="toggle-row">
         <button class="btn ghost" id="resBtn">残差 表示</button>
         <button class="btn ghost" id="spinBtn">自動回転 入</button>
       </div>
       <div class="step-readout" id="readout">
-        <b>平面なし：</b>いま空間にあるのは観測データだけです。再生すると、これらの点に最もよく当てはまる回帰平面が現れ、最小二乗法で位置を合わせていきます。
+        <b>直線なし：</b>いま空間にあるのは観測データだけです。再生すると、これらの点に最もよく当てはまる回帰直線が現れ、最小二乗法で位置を合わせていきます。
       </div>
-      <div class="hint">
-        ※ 平面の傾き a₁・a₂ が各説明変数の「影響力」に当たります。資料の係数（0.93 / 0.41）と同じく、
-        傾きが大きいほどYへの効きが強いことを表します。
+      <div class="hint" id="hint">
+        ※ 直線の傾き a₁ が説明変数X₁の「影響力」に当たります。傾きが大きいほどYへの効きが強いことを表します。
+        重回帰タブに切り替えると、説明変数がX₂も加わり、当てはめる対象が直線から<b>平面</b>に拡張されます。
       </div>
     </div>
   </aside>
@@ -209,8 +298,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 // ============================================================
-//  重回帰分析 3D 可視化
-//  Y = a1*X1 + a2*X2 + b  を最小二乗法で当てはめる様子
+//  回帰分析 3D 可視化（単回帰 ⇄ 重回帰 切替）
+//  単回帰: Y = a1*X1 + b           （直線）
+//  重回帰: Y = a1*X1 + a2*X2 + b    （平面）
+//  どちらも同一データ点に最小二乗法で当てはめる
 // ============================================================
 const stage = document.getElementById('stage');
 
@@ -230,6 +321,11 @@ const COL = {
 };
 
 // ============================================================
+//  現在のモード
+// ============================================================
+let mode = 'simple';   // 'simple' = 単回帰, 'multi' = 重回帰
+
+// ============================================================
 //  データ生成： 真の関係 Y = 0.85*X1 + 0.42*X2 + b + ノイズ
 //  X1,X2,Y は 0..10 のスケールに正規化して描画
 // ============================================================
@@ -246,7 +342,7 @@ for(let i=0;i<N;i++){
   pts.push({x1,x2,y});
 }
 
-// ---- 最小二乗法で a1,a2,b を解く（正規方程式）----
+// ---- 最小二乗法で a1,a2,b を解く（重回帰：正規方程式 3x3）----
 function fitPlane(data){
   let Sxx1=0,Sxx2=0,Sx1x2=0,Sx1=0,Sx2=0,Sy=0,Sx1y=0,Sx2y=0,n=data.length;
   for(const p of data){
@@ -254,7 +350,6 @@ function fitPlane(data){
     Sx1+=p.x1; Sx2+=p.x2; Sy+=p.y;
     Sx1y+=p.x1*p.y; Sx2y+=p.x2*p.y;
   }
-  // 3x3 連立： [Sxx1 Sx1x2 Sx1; Sx1x2 Sxx2 Sx2; Sx1 Sx2 n] [a1 a2 b]^T = [Sx1y Sx2y Sy]
   const M=[[Sxx1,Sx1x2,Sx1],[Sx1x2,Sxx2,Sx2],[Sx1,Sx2,n]];
   const V=[Sx1y,Sx2y,Sy];
   return solve3(M,V);
@@ -270,7 +365,20 @@ function solve3(M,V){
   }
   return {a1:A[0][3], a2:A[1][3], b:A[2][3]};
 }
-const BEST = fitPlane(pts);
+
+// ---- 最小二乗法（単回帰：Y = a1*X1 + b）----
+function fitLine(data){
+  let Sx=0,Sy=0,Sxx=0,Sxy=0,n=data.length;
+  for(const p of data){ Sx+=p.x1; Sy+=p.y; Sxx+=p.x1*p.x1; Sxy+=p.x1*p.y; }
+  const a1=(n*Sxy - Sx*Sy)/(n*Sxx - Sx*Sx);
+  const b=(Sy - a1*Sx)/n;
+  return {a1, a2:0, b};   // a2=0（X2を使わない）
+}
+
+const BEST_MULTI  = fitPlane(pts);
+const BEST_SIMPLE = fitLine(pts);
+// 現在モードの最適解を返す
+function bestFor(m){ return (m==='multi') ? BEST_MULTI : BEST_SIMPLE; }
 
 // 平均Y（R²計算用）
 const meanY = pts.reduce((s,p)=>s+p.y,0)/N;
@@ -278,7 +386,6 @@ const SStot = pts.reduce((s,p)=>s+(p.y-meanY)**2,0);
 function ssrFor(a1,a2,b){
   return pts.reduce((s,p)=>{ const pred=a1*p.x1+a2*p.x2+b; return s+(p.y-pred)**2; },0);
 }
-const SSR_BEST = ssrFor(BEST.a1,BEST.a2,BEST.b);
 const SSR_FLAT = ssrFor(0,0,meanY);
 
 // ============================================================
@@ -300,14 +407,17 @@ function axisLine(a,b,color){
   const g=new THREE.BufferGeometry().setFromPoints([a,b]);
   return new THREE.Line(g, new THREE.LineBasicMaterial({color, linewidth:2}));
 }
-root.add(axisLine(new THREE.Vector3(0,0,0), new THREE.Vector3(AX,0,0), COL.x1));   // X1
-root.add(axisLine(new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,AX), COL.x2));   // X2
-root.add(axisLine(new THREE.Vector3(0,0,0), new THREE.Vector3(0,AX,0), COL.y));    // Y
+const axisX1 = axisLine(new THREE.Vector3(0,0,0), new THREE.Vector3(AX,0,0), COL.x1);
+const axisX2 = axisLine(new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,AX), COL.x2);
+const axisY  = axisLine(new THREE.Vector3(0,0,0), new THREE.Vector3(0,AX,0), COL.y);
+root.add(axisX1); root.add(axisX2); root.add(axisY);
 
 // 軸の目盛り（淡い縦ガイド）
+const gridGuides=[];
 for(let i=0;i<=AX;i+=2){
   const gl=axisLine(new THREE.Vector3(i,0,0),new THREE.Vector3(i,0,AX),COL.grid);
   gl.material.opacity=0.25; gl.material.transparent=true; root.add(gl);
+  gridGuides.push(gl);
 }
 
 // テキストラベル（スプライト）
@@ -327,8 +437,21 @@ const lbX1=makeLabel('X₁',cssCol('x1')); lbX1.position.set(AX+0.6,0,0); root.a
 const lbX2=makeLabel('X₂',cssCol('x2')); lbX2.position.set(0,0,AX+0.6); root.add(lbX2);
 const lbY =makeLabel('Y', cssCol('y'));  lbY.position.set(0,AX+0.6,0);  root.add(lbY);
 
+// X2に関わる要素（重回帰でだけ強調、単回帰では淡く）の不透明度制御
+function setX2Emphasis(on){
+  const ax2op = on ? 1.0 : 0.18;
+  axisX2.material.opacity = ax2op; axisX2.material.transparent = true;
+  lbX2.material.opacity = on ? 1.0 : 0.25;
+  const gop = on ? 0.25 : 0.10;
+  gridGuides.forEach(g=>{ g.material.opacity=gop; });
+  // 凡例のX2行も連動
+  document.querySelector('.legend .row-x2').style.opacity = on ? 1 : 0.4;
+}
+
 // ============================================================
 //  回帰平面メッシュ（傾きを動的に更新）
+//  ※ 単回帰でも同じメッシュを使い、a2=0 にすれば X2方向に傾かない
+//     「帯（直線を含む面）」になる。直線本体は別途 lineMesh で強調。
 // ============================================================
 const planeGeo = new THREE.PlaneGeometry(AX,AX,1,1);
 const planeMat = new THREE.MeshBasicMaterial({
@@ -338,28 +461,39 @@ const planeMat = new THREE.MeshBasicMaterial({
 const planeMesh = new THREE.Mesh(planeGeo, planeMat);
 root.add(planeMesh);
 
-// 平面のワイヤー枠
 const planeEdge = new THREE.LineSegments(
   new THREE.EdgesGeometry(planeGeo),
   new THREE.LineBasicMaterial({color:COL.plane, transparent:true, opacity:0.0})
 );
 planeMesh.add(planeEdge);
 
-// 平面の不透明度をまとめて制御（0=完全に消えている, 1=通常表示）
-function setPlaneOpacity(o){
-  planeMesh.material.opacity = 0.30*o;
-  planeEdge.material.opacity = 0.70*o;
+// 単回帰の「回帰直線」本体（X2=中央断面 を太い線で）
+const lineGeo = new THREE.BufferGeometry().setFromPoints([
+  new THREE.Vector3(0,0,0), new THREE.Vector3(AX,0,0)]);
+const lineMesh = new THREE.Line(lineGeo,
+  new THREE.LineBasicMaterial({color:COL.plane, transparent:true, opacity:0.0}));
+root.add(lineMesh);
+
+// 平面・直線の不透明度をまとめて制御
+function setFitOpacity(o){
+  if(mode==='multi'){
+    planeMesh.material.opacity = 0.30*o;
+    planeEdge.material.opacity = 0.70*o;
+    lineMesh.material.opacity  = 0.0;
+  }else{
+    // 単回帰：面はごく薄く（直線が乗っている帯のイメージ）、直線を主役に
+    planeMesh.material.opacity = 0.10*o;
+    planeEdge.material.opacity = 0.22*o;
+    lineMesh.material.opacity  = 0.95*o;
+    lineMesh.material.linewidth = 3;
+  }
 }
 
 // 平面を Y = a1*X1 + a2*X2 + b に合わせて変形
 function updatePlane(a1,a2,b){
   const g=planeMesh.geometry;
-  // PlaneGeometry はローカルXY平面。4頂点を直接 (X1,X2)→(x,y=Y,z) に再配置するため
-  // 自前ジオメトリで置き換える方が確実。
-  const x1s=[0,AX,0,AX], x2s=[0,0,AX,AX];
-  const pos=g.attributes.position;
-  // 頂点順： (-,-),(+,-),(-,+),(+,+) に対応するようマッピング
   const corners=[[0,0],[AX,0],[0,AX],[AX,AX]];
+  const pos=g.attributes.position;
   for(let i=0;i<4;i++){
     const X1=corners[i][0], X2=corners[i][1];
     const Y=a1*X1+a2*X2+b;
@@ -369,8 +503,14 @@ function updatePlane(a1,a2,b){
   g.computeVertexNormals();
   planeEdge.geometry.dispose();
   planeEdge.geometry=new THREE.EdgesGeometry(g);
+
+  // 単回帰の直線（X2の中央 = AX/2 の断面でX1方向に走る線）
+  const X2mid = AX/2;
+  const lg=lineMesh.geometry; const lpos=lg.attributes.position;
+  lpos.setXYZ(0, 0,  a1*0 +a2*X2mid+b, X2mid);
+  lpos.setXYZ(1, AX, a1*AX+a2*X2mid+b, X2mid);
+  lpos.needsUpdate=true;
 }
-// PlaneGeometry の頂点をワールド配置で使うため、メッシュ自身の変換は無効化
 planeMesh.position.set(0,0,0);
 planeMesh.rotation.set(0,0,0);
 
@@ -379,7 +519,7 @@ planeMesh.rotation.set(0,0,0);
 // ============================================================
 const pointGroup = new THREE.Group(); root.add(pointGroup);
 const residGroup = new THREE.Group(); root.add(residGroup);
-residGroup.visible = false; // 平面が現れるまで残差は出さない
+residGroup.visible = false;
 const sphereGeo = new THREE.SphereGeometry(0.13,16,16);
 const sphereMat = new THREE.MeshBasicMaterial({color:COL.y});
 const stemMat   = new THREE.LineBasicMaterial({color:COL.grid, transparent:true, opacity:0.45});
@@ -390,13 +530,11 @@ for(const p of pts){
   m.position.set(p.x1, p.y, p.x2);
   pointGroup.add(m); pointMeshes.push(m);
 
-  // 床への投影ステム（点の位置把握を助ける）
   const sg=new THREE.BufferGeometry().setFromPoints([
     new THREE.Vector3(p.x1,0,p.x2), new THREE.Vector3(p.x1,p.y,p.x2)]);
   const sl=new THREE.Line(sg, stemMat.clone());
   pointGroup.add(sl); stemLines.push(sl);
 
-  // 残差線（点 → 平面上の予測値）
   const rg=new THREE.BufferGeometry().setFromPoints([
     new THREE.Vector3(p.x1,p.y,p.x2), new THREE.Vector3(p.x1,p.y,p.x2)]);
   const rl=new THREE.Line(rg, new THREE.LineBasicMaterial({color:COL.resid}));
@@ -410,7 +548,6 @@ function updateResiduals(a1,a2,b){
     pos.setXYZ(0,p.x1,p.y,p.x2);
     pos.setXYZ(1,p.x1,pred,p.x2);
     pos.needsUpdate=true;
-    // 残差が小さいほど緑が濃く、大きいほど赤寄りに
     const err=Math.abs(p.y-pred);
     const t=Math.min(1,err/4);
     residLines[i].material.color.setRGB(0.18+0.65*t, 0.49-0.2*t, 0.42-0.3*t);
@@ -419,8 +556,13 @@ function updateResiduals(a1,a2,b){
 
 // ============================================================
 //  カメラ操作（自前の軌道コントロール）
+//  単回帰では X1-Y 平面を正面から見るアングル、重回帰では斜め俯瞰
 // ============================================================
-let theta=0.9, phi=1.05, radius=22;
+const CAM = {
+  simple:{ theta:Math.PI/2, phi:1.35, radius:20 },  // X1-Y正面寄り
+  multi: { theta:0.9,       phi:1.05, radius:22 }
+};
+let theta=CAM.simple.theta, phi=CAM.simple.phi, radius=CAM.simple.radius;
 const target=new THREE.Vector3(AX/2, AX/2.4, AX/2);
 function applyCam(){
   camera.position.set(
@@ -431,6 +573,27 @@ function applyCam(){
   camera.lookAt(target);
 }
 applyCam();
+
+// モード切替時にカメラを滑らかに移動
+let camTween=null;
+function tweenCamTo(dst, dur=900){
+  if(camTween) cancelAnimationFrame(camTween);
+  const s={theta,phi,radius}, t0=performance.now();
+  // theta は最短回りに補間
+  let dTheta = dst.theta - s.theta;
+  while(dTheta> Math.PI) dTheta-=2*Math.PI;
+  while(dTheta<-Math.PI) dTheta+=2*Math.PI;
+  function ease(t){ return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
+  function step(now){
+    const t=Math.min(1,(now-t0)/dur), e=ease(t);
+    theta = s.theta + dTheta*e;
+    phi   = s.phi   + (dst.phi   - s.phi  )*e;
+    radius= s.radius+ (dst.radius- s.radius)*e;
+    applyCam();
+    if(t<1) camTween=requestAnimationFrame(step); else camTween=null;
+  }
+  camTween=requestAnimationFrame(step);
+}
 
 let dragging=false, px=0, py=0;
 renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;px=e.clientX;py=e.clientY;autoSpin=false;});
@@ -452,12 +615,98 @@ renderer.domElement.addEventListener('wheel',e=>{
 //  UI 連携
 // ============================================================
 const $=id=>document.getElementById(id);
-function setReadout(a1,a2,b,r2,prog){
+
+// ============================================================
+//  2D 単回帰グラフ（X₁→横軸, Y→縦軸）
+//  3Dの「重回帰を真横から見た断面」に相当する素直な散布図＋回帰直線
+// ============================================================
+const c2d = document.getElementById('canvas2d');
+const ctx2d = c2d.getContext('2d');
+let view2d = { dpr:1, w:0, h:0, pad:{l:58,r:24,t:24,b:46} };
+// 2Dで現在描く当てはめ状態
+let fit2d = { a1:0, b:meanY, opacity:0, showResid:true };
+
+function resize2d(){
+  const dpr=Math.min(devicePixelRatio,2);
+  const w=stage.clientWidth, h=stage.clientHeight;
+  if(w<=0 || h<=0) return;   // レイアウト未確定なら描かない
+  c2d.width=w*dpr; c2d.height=h*dpr;
+  c2d.style.width=w+'px'; c2d.style.height=h+'px';
+  ctx2d.setTransform(dpr,0,0,dpr,0,0);
+  view2d.dpr=dpr; view2d.w=w; view2d.h=h;
+}
+// データ座標(0..AX) → 画面座標
+function sx(x1){ const p=view2d.pad; return p.l + (x1/AX)*(view2d.w-p.l-p.r); }
+function sy(y){  const p=view2d.pad; return (view2d.h-p.b) - (y/AX)*(view2d.h-p.t-p.b); }
+
+function draw2d(){
+  if(mode!=='simple') return;
+  const ctx=ctx2d, p=view2d.pad, W=view2d.w, H=view2d.h;
+  ctx.clearRect(0,0,W,H);
+
+  // --- グリッド ---
+  ctx.lineWidth=1;
+  ctx.strokeStyle='rgba(201,194,176,.55)';
+  ctx.fillStyle='#5d6b7a';
+  ctx.font='11px "Times New Roman",serif';
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  for(let i=0;i<=AX;i+=1){
+    const X=sx(i);
+    ctx.beginPath(); ctx.moveTo(X,sy(0)); ctx.lineTo(X,sy(AX)); ctx.stroke();
+    if(i%2===0) ctx.fillText(i, X, sy(0)+6);
+  }
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  for(let j=0;j<=AX;j+=1){
+    const Y=sy(j);
+    ctx.beginPath(); ctx.moveTo(sx(0),Y); ctx.lineTo(sx(AX),Y); ctx.stroke();
+    if(j%2===0) ctx.fillText(j, sx(0)-8, Y);
+  }
+
+  // --- 軸 ---
+  ctx.lineWidth=2; ctx.strokeStyle='#10243e';
+  ctx.beginPath(); ctx.moveTo(sx(0),sy(0)); ctx.lineTo(sx(AX),sy(0)); ctx.stroke(); // X軸
+  ctx.beginPath(); ctx.moveTo(sx(0),sy(0)); ctx.lineTo(sx(0),sy(AX)); ctx.stroke(); // Y軸
+
+  // 軸ラベル
+  ctx.font='italic bold 18px "Times New Roman",serif';
+  ctx.fillStyle='#5b6fd6'; ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText('X₁', sx(AX), sy(0)+22);
+  ctx.fillStyle='#b03a8f'; ctx.textAlign='right'; ctx.textBaseline='bottom';
+  ctx.fillText('Y', sx(0)-10, sy(AX)+2);
+
+  // --- 残差線（点 → 回帰直線上の予測値）---
+  if(fit2d.opacity>0.001 && fit2d.showResid){
+    ctx.lineWidth=1.5;
+    for(const pt of pts){
+      const pred=fit2d.a1*pt.x1+fit2d.b;
+      const err=Math.abs(pt.y-pred), t=Math.min(1,err/4);
+      const r=Math.round((0.18+0.65*t)*255), g=Math.round((0.49-0.2*t)*255), bl=Math.round((0.42-0.3*t)*255);
+      ctx.strokeStyle=`rgba(${r},${g},${bl},${0.85*fit2d.opacity})`;
+      ctx.beginPath(); ctx.moveTo(sx(pt.x1),sy(pt.y)); ctx.lineTo(sx(pt.x1),sy(pred)); ctx.stroke();
+    }
+  }
+
+  // --- 回帰直線 ---
+  if(fit2d.opacity>0.001){
+    ctx.lineWidth=3;
+    ctx.strokeStyle=`rgba(192,57,43,${0.95*fit2d.opacity})`;
+    const y0=fit2d.a1*0+fit2d.b, y1=fit2d.a1*AX+fit2d.b;
+    ctx.beginPath(); ctx.moveTo(sx(0),sy(y0)); ctx.lineTo(sx(AX),sy(y1)); ctx.stroke();
+  }
+
+  // --- データ点 ---
+  ctx.fillStyle='#b03a8f';
+  for(const pt of pts){
+    ctx.beginPath(); ctx.arc(sx(pt.x1),sy(pt.y),4,0,Math.PI*2); ctx.fill();
+  }
+}
+
+function setReadout(a1,a2,b,r2){
   $('fA1').textContent=a1.toFixed(2);
   $('fA2').textContent=a2.toFixed(2);
   $('fB').textContent=b.toFixed(1);
   $('cA1').textContent=a1.toFixed(3);
-  $('cA2').textContent=a2.toFixed(3);
+  $('cA2').textContent=(mode==='multi')?a2.toFixed(3):'–';
   $('cB').textContent=b.toFixed(3);
   $('r2').textContent=r2.toFixed(2);
   $('r2bar').style.width=Math.max(0,r2*100).toFixed(0)+'%';
@@ -467,43 +716,57 @@ function setReadout(a1,a2,b,r2,prog){
 }
 function r2For(a1,a2,b){ return 1 - ssrFor(a1,a2,b)/SStot; }
 
-// 現在の平面パラメータ
 let cur={a1:0,a2:0,b:meanY};
 function render(a1,a2,b){
-  updatePlane(a1,a2,b);
-  updateResiduals(a1,a2,b);
+  if(mode==='simple'){
+    // 単回帰は2Dグラフを更新（3Dジオメトリは触らない）
+    fit2d.a1=a1; fit2d.b=b;
+    draw2d();
+  }else{
+    updatePlane(a1,a2,b);
+    updateResiduals(a1,a2,b);
+  }
   setReadout(a1,a2,b, r2For(a1,a2,b));
 }
 
-// 平面が「無い」初期表示：散布図だけを見せ、指標は空欄
-function showNoPlane(){
-  setPlaneOpacity(0);
-  residGroup.visible=false;
-  // 平面ジオメトリは最適解の位置に用意しておく（出現時にそこへ現れる）
-  updatePlane(BEST.a1,BEST.a2,BEST.b);
+// 当てはめ「前」の表示：散布図だけ、指標は空欄
+function showNoFit(){
+  const B=bestFor(mode);
+  if(mode==='simple'){
+    // 2D：直線は非表示（散布図だけ）
+    fit2d.opacity=0; fit2d.a1=B.a1; fit2d.b=B.b;
+    draw2d();
+  }else{
+    setFitOpacity(0);
+    residGroup.visible=false;
+    updatePlane(B.a1,B.a2,B.b);   // 出現時にそこへ現れるよう準備
+  }
   $('fA1').textContent='–'; $('fA2').textContent='–'; $('fB').textContent='–';
   $('cA1').textContent='–'; $('cA2').textContent='–'; $('cB').textContent='–';
   $('r2').textContent='–'; $('r2bar').style.width='0%';
   $('ssr').textContent='–'; $('ssrbar').style.width='0%';
-  $('readout').innerHTML='<b>平面なし：</b>いま空間にあるのは観測データだけです。再生すると、これらの点に最もよく当てはまる<b>回帰平面</b>が現れ、最小二乗法で位置を合わせていきます。';
+  if(mode==='simple'){
+    $('readout').innerHTML='<b>直線なし：</b>いまグラフにあるのは観測データだけです。再生すると、これらの点に最もよく当てはまる<b>回帰直線</b>が現れ、最小二乗法で位置を合わせていきます。';
+  }else{
+    $('readout').innerHTML='<b>平面なし：</b>いま空間にあるのは観測データだけです。再生すると、これらの点に最もよく当てはまる<b>回帰平面</b>が現れ、最小二乗法で位置を合わせていきます。';
+  }
 }
-showNoPlane();
 
 // ---- あてはめアニメーション ----
-// Phase 1: 平面が床から立ち上がりながらフェードインして出現
-// Phase 2: 最小二乗法の最適な傾きへ収束
 let anim=null;
 function playFit(){
   if(anim) cancelAnimationFrame(anim);
+  const B=bestFor(mode);
   residGroup.visible=false;
   $('playBtn').disabled=true;
   $('playBtn').style.opacity=0.55;
-  $('playBtn').textContent='平面を当てはめ中…';
+  $('playBtn').textContent=(mode==='simple')?'直線を当てはめ中…':'平面を当てはめ中…';
 
-  const APPEAR=1100;      // 出現フェーズの長さ(ms)
-  const SETTLE=2200;      // フィットフェーズの長さ(ms)
+  const APPEAR=1100, SETTLE=2200;
   const t0=performance.now();
-  $('readout').innerHTML='<b>平面が出現中…</b>データの重心あたりから回帰平面が立ち上がります。';
+  $('readout').innerHTML=(mode==='simple')
+    ? '<b>直線が出現中…</b>データの重心あたりから回帰直線が現れます。'
+    : '<b>平面が出現中…</b>データの重心あたりから回帰平面が立ち上がります。';
 
   function ease(t){ return t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
 
@@ -511,62 +774,69 @@ function playFit(){
     const elapsed=now-t0;
 
     if(elapsed < APPEAR){
-      // --- Phase 1: 出現 ---
       const t=elapsed/APPEAR, e=ease(t);
-      // 平面は最初フラット（傾き0・重心の高さ）の姿で、床付近から meanY へせり上がる
-      const startB = -2;             // 床より少し下から
+      const startB = -2;
       const b = startB + (meanY-startB)*e;
       cur={a1:0, a2:0, b};
-      updatePlane(cur.a1,cur.a2,cur.b);
-      setPlaneOpacity(e);            // フェードイン
-      // 指標はまだ出さない（出現しきってから）
+      if(mode==='simple'){
+        fit2d.opacity=e; fit2d.a1=0; fit2d.b=b; draw2d();
+      }else{
+        updatePlane(cur.a1,cur.a2,cur.b);
+        setFitOpacity(e);
+      }
       anim=requestAnimationFrame(frame);
       return;
     }
 
     const te=elapsed-APPEAR;
     if(te < SETTLE){
-      // --- Phase 2: フィット ---
-      if(!residGroup.visible){ residGroup.visible=showResid; }
-      setPlaneOpacity(1);
+      if(mode==='simple'){
+        fit2d.opacity=1; fit2d.showResid=showResid;
+      }else{
+        if(!residGroup.visible){ residGroup.visible=showResid; }
+        setFitOpacity(1);
+      }
       const t=te/SETTLE, e=ease(t);
       const start={a1:0,a2:0,b:meanY};
-      cur.a1=start.a1+(BEST.a1-start.a1)*e;
-      cur.a2=start.a2+(BEST.a2-start.a2)*e;
-      cur.b =start.b +(BEST.b -start.b )*e;
+      cur.a1=start.a1+(B.a1-start.a1)*e;
+      cur.a2=start.a2+(B.a2-start.a2)*e;
+      cur.b =start.b +(B.b -start.b )*e;
       render(cur.a1,cur.a2,cur.b);
       if(te>SETTLE*0.12){
-        $('readout').innerHTML='<b>あてはめ中…</b>最小二乗法が残差二乗和を小さくする向きへ平面を傾けています。緑の残差線が短くなるほど予測が実測に近づきます。';
+        $('readout').innerHTML=(mode==='simple')
+          ? '<b>あてはめ中…</b>最小二乗法が残差二乗和を小さくする向きへ直線を傾けています。緑の残差線が短くなるほど予測が実測に近づきます。'
+          : '<b>あてはめ中…</b>最小二乗法が残差二乗和を小さくする向きへ平面を傾けています。緑の残差線が短くなるほど予測が実測に近づきます。';
       }
       anim=requestAnimationFrame(frame);
       return;
     }
 
-    // --- 完了 ---
-    cur={...BEST};
-    setPlaneOpacity(1);
+    cur={...B};
+    if(mode==='simple'){ fit2d.opacity=1; fit2d.showResid=showResid; }
+    else setFitOpacity(1);
     render(cur.a1,cur.a2,cur.b);
     anim=null;
     $('playBtn').disabled=false;
     $('playBtn').style.opacity=1;
-    $('playBtn').textContent='↻ もう一度 平面を現す';
-    $('readout').innerHTML='<b>あてはめ完了。</b>R² = '+r2For(BEST.a1,BEST.a2,BEST.b).toFixed(2)+
-      '。平面の傾き a₁='+BEST.a1.toFixed(2)+'（訪問回数）, a₂='+BEST.a2.toFixed(2)+
-      '（提案件数）が各変数の影響力です。a₁ の方が大きい＝売上への効きが強い、と読めます。';
+    $('playBtn').textContent=(mode==='simple')?'↻ もう一度 直線を現す':'↻ もう一度 平面を現す';
+    if(mode==='simple'){
+      $('readout').innerHTML='<b>あてはめ完了。</b>R² = '+r2For(B.a1,B.a2,B.b).toFixed(2)+
+        '。直線の傾き a₁='+B.a1.toFixed(2)+'（訪問回数）が説明変数X₁の影響力です。'+
+        '次は重回帰タブで、説明変数X₂を加えて直線が<b>平面</b>へ拡張される様子を見てみましょう。';
+    }else{
+      $('readout').innerHTML='<b>あてはめ完了。</b>R² = '+r2For(B.a1,B.a2,B.b).toFixed(2)+
+        '。平面の傾き a₁='+B.a1.toFixed(2)+'（訪問回数）, a₂='+B.a2.toFixed(2)+
+        '（提案件数）が各変数の影響力です。a₁ の方が大きい＝売上への効きが強い、と読めます。';
+    }
   }
   anim=requestAnimationFrame(frame);
 }
 
-function resetFlat(){
-  if(anim){cancelAnimationFrame(anim);anim=null;}
-  showNoPlane();
-}
-
 $('playBtn').addEventListener('click',()=>{
-  // すでに当てはめ済みなら、いったん平面なしに戻してから出現させる
-  const fitted = (anim===null) && (Math.abs(cur.a1-BEST.a1)<0.01);
+  const B=bestFor(mode);
+  const fitted = (anim===null) && (Math.abs(cur.a1-B.a1)<0.01) && (Math.abs(cur.a2-B.a2)<0.01);
   if(fitted || anim){
-    showNoPlane();
+    showNoFit();
     setTimeout(playFit,200);
   } else {
     playFit();
@@ -577,9 +847,12 @@ $('playBtn').addEventListener('click',()=>{
 let showResid=true;
 $('resBtn').addEventListener('click',()=>{
   showResid=!showResid;
-  // 平面が出ているときだけ残差を反映（平面なしのときは常に非表示）
-  const planeVisible = planeMesh.material.opacity > 0.001;
-  residGroup.visible = showResid && planeVisible;
+  if(mode==='simple'){
+    fit2d.showResid=showResid; draw2d();
+  }else{
+    const fitVisible = planeMesh.material.opacity > 0.001;
+    residGroup.visible = showResid && fitVisible;
+  }
   $('resBtn').textContent= showResid?'残差 表示':'残差 非表示';
   $('resBtn').classList.toggle('ghost',!showResid);
 });
@@ -593,26 +866,102 @@ $('spinBtn').addEventListener('click',()=>{
 });
 
 // ============================================================
+//  モード切替
+// ============================================================
+function applyModeUI(){
+  const simple = (mode==='simple');
+  // body クラス（2D/3D表示の切替）
+  document.body.classList.toggle('mode-simple', simple);
+  document.body.classList.toggle('mode-multi', !simple);
+  // タブの見た目
+  $('tabSimple').classList.toggle('active', simple);
+  $('tabMulti').classList.toggle('active', !simple);
+  // タイトル・式・リード文
+  if(simple){
+    $('title').innerHTML='説明変数1つを、平面で見る<br><span class="eq" id="titleEq">Y = a₁X₁ + b</span>';
+    $('lead').innerHTML='説明変数が1つのとき、当てはめるのは1本の<b>回帰直線</b>です。横軸にX₁、縦軸にYをとった散布図に、各点との縦の隔たり（残差）の二乗和が最小になるよう直線が当てはまっていく様子を確認できます。';
+    $('lgFit').textContent='回帰直線';
+    $('playBtn').textContent='▶ 直線を現して当てはめる';
+    $('hint').innerHTML='※ 直線の傾き a₁ が説明変数X₁の「影響力」に当たります。傾きが大きいほどYへの効きが強いことを表します。重回帰タブに切り替えると、説明変数X₂が加わり、当てはめる対象が直線から<b>平面</b>に拡張されます。';
+    // 単回帰では自動回転は無効化
+    autoSpin=false;
+    $('spinBtn').textContent='自動回転 ―';
+    $('spinBtn').classList.add('ghost');
+    $('spinBtn').disabled=true; $('spinBtn').style.opacity=0.45;
+  }else{
+    $('title').innerHTML='説明変数2つを、立体で見る<br><span class="eq" id="titleEq">Y = a₁X₁ + a₂X₂ + b</span>';
+    $('lead').innerHTML='説明変数が2つになると、当てはめるのは「直線」ではなく<b>回帰平面</b>になります。各点から平面までの縦の隔たり（残差）の二乗和が最小になるように、平面が空間にフィットしていく様子を確認できます。ドラッグで視点を回転、スクロールでズームできます。';
+    $('lgFit').textContent='回帰平面';
+    $('playBtn').textContent='▶ 平面を現して当てはめる';
+    $('hint').innerHTML='※ 平面の傾き a₁・a₂ が各説明変数の「影響力」に当たります。傾きが大きいほどYへの効きが強いことを表します。単回帰タブと見比べると、X₂を足したことでR²がどう変化するかが分かります。';
+    $('spinBtn').disabled=false; $('spinBtn').style.opacity=1;
+    autoSpin=true;
+    $('spinBtn').textContent='自動回転 入';
+    $('spinBtn').classList.remove('ghost');
+  }
+  // X2関連表示（式の第2項・係数行・軸強調）
+  $('termX2').style.opacity = simple ? 0 : 1;
+  $('rowA2').style.opacity  = simple ? 0.3 : 1;
+  setX2Emphasis(!simple);
+}
+
+function switchMode(m){
+  if(m===mode) return;
+  mode=m;
+  if(anim){cancelAnimationFrame(anim);anim=null;}
+  applyModeUI();
+  if(m!=='simple'){ tweenCamTo(CAM[m]); }
+  // レイアウト確定後に両キャンバスのサイズを合わせる
+  syncSize();
+  requestAnimationFrame(()=>{ syncSize(); });
+  showNoFit();   // 切替前の状態に戻す
+}
+$('tabSimple').addEventListener('click',()=>switchMode('simple'));
+$('tabMulti').addEventListener('click',()=>switchMode('multi'));
+
+// ============================================================
 //  レンダーループ
 // ============================================================
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 if(reduceMotion) autoSpin=false;
 
 function loop(){
-  if(autoSpin && !dragging){ theta+=0.0024; applyCam(); }
+  if(autoSpin && !dragging && !camTween){ theta+=0.0024; applyCam(); }
   renderer.render(scene,camera);
   requestAnimationFrame(loop);
 }
+
+// 初期化：単回帰モードで、当てはめ前の状態
+applyModeUI();        // 先にbodyクラスを付けて左カラムを反映
+resize2d();
+showNoFit();
 loop();
+// レイアウト確定後にもう一度サイズを合わせる
+requestAnimationFrame(()=>{ resize2d(); if(mode==='simple') draw2d(); });
 
-// 初回ロード時は平面を出さず、ボタン操作を待つ（自動再生はしない）
-
-// リサイズ対応
-addEventListener('resize',()=>{
-  const w=stage.clientWidth,h=stage.clientHeight;
+// stage のサイズ変化を監視して、3D/2D 両方のキャンバスを確実に追従させる
+function syncSize(){
+  const w=stage.clientWidth, h=stage.clientHeight;
+  if(w<=0 || h<=0) return;
+  // 3D
   camera.aspect=w/h; camera.updateProjectionMatrix();
   renderer.setSize(w,h);
-});
+  // 2D
+  resize2d();
+  if(mode==='simple') draw2d();
+}
+if('ResizeObserver' in window){
+  const ro=new ResizeObserver(()=>syncSize());
+  ro.observe(stage);
+}
+// フォント読み込み完了後にも測り直す（日本語フォントで高さがずれるのを防ぐ）
+if(document.fonts && document.fonts.ready){
+  document.fonts.ready.then(()=>{ syncSize(); });
+}
+addEventListener('load', ()=>syncSize());
+
+// リサイズ対応
+addEventListener('resize', ()=>syncSize());
 </script>
 </body>
 </html>
