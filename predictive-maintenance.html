@@ -1,0 +1,842 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>故障予測から保守最適化へ — 回帰と最適化でつなぐ設備保守の生産性</title>
+<style>
+  :root{
+    --panel:#ffffff; --ink:#1f2937; --sub:#475569; --line:#e2e8f0;
+    --brand:#2563eb; --brand-d:#1d4ed8; --accent:#0ea5e9;
+    --good:#16a34a; --good-bg:#dcfce7; --bad:#dc2626; --bad-bg:#fee2e2;
+    --warn:#d97706; --warn-bg:#fef3c7; --gold:#f59e0b;
+    --m1:#dc2626; --m2:#2563eb; --m3:#0d9488; --m4:#9333ea;
+    --reg:#9333ea; --opt:#2563eb;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{font-family:"Hiragino Sans","ヒラギノ角ゴシック","Yu Gothic","游ゴシック","Meiryo",sans-serif;
+    margin:0; color:var(--ink); background:#eef2f7; font-size:18px; line-height:1.75;}
+  .wrap{max-width:1180px; margin:0 auto; padding:0 18px 80px;}
+  header.hero{background:linear-gradient(135deg,#0f766e 0%,#0e7490 45%,#1e3a8a 100%); color:#fff; padding:54px 24px 46px; text-align:center;}
+  header.hero h1{font-size:2.1em; margin:0 0 10px; letter-spacing:.5px;}
+  header.hero p{font-size:1.12em; margin:6px auto; max-width:820px; opacity:.95;}
+  header.hero .tag{display:inline-block; margin-top:16px; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.4); padding:6px 16px; border-radius:999px; font-size:.95em;}
+
+  nav.toc{position:sticky; top:0; z-index:50; background:#0f172aee; backdrop-filter:blur(6px); padding:10px 14px; display:flex; gap:6px; flex-wrap:wrap; justify-content:center; box-shadow:0 2px 10px rgba(0,0,0,.15);}
+  nav.toc a{color:#cbd5e1; text-decoration:none; font-size:.86em; padding:6px 10px; border-radius:8px; white-space:nowrap;}
+  nav.toc a:hover{background:#1e293b; color:#fff;}
+
+  section{background:var(--panel); border-radius:16px; margin:30px 0; padding:34px 32px; box-shadow:0 6px 22px rgba(15,23,42,.07);}
+  .sec-num{display:inline-flex; align-items:center; justify-content:center; width:46px; height:46px; background:var(--brand); color:#fff; border-radius:50%; font-weight:800; font-size:1.1em; margin-right:14px; flex:none;}
+  .sec-num.reg{background:var(--reg);}
+  h2.sec-title{display:flex; align-items:center; font-size:1.6em; margin:0 0 6px; line-height:1.3;}
+  .lead{color:var(--sub); margin:4px 0 22px; font-size:1.03em;}
+  h3{font-size:1.26em; margin:30px 0 12px; color:#0f172a; border-left:6px solid var(--brand); padding-left:12px;}
+  h3.reg{border-color:var(--reg);}
+  h4{font-size:1.07em; margin:18px 0 8px;}
+
+  /* 学習目標 */
+  .goals{background:linear-gradient(135deg,#1e293b,#334155); color:#e2e8f0; border-radius:16px; padding:26px 30px; margin:30px 0;}
+  .goals h2{margin:0 0 12px; font-size:1.35em; color:#fff;}
+  .goals ul{margin:0; padding-left:22px;} .goals li{margin:8px 0;}
+  .goals .who{margin-top:14px; font-size:.92em; opacity:.85;}
+
+  .flow{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; margin:20px 0;}
+  .flow .box{border-radius:14px; padding:18px; color:#fff; text-align:center;}
+  .flow .box.reg{background:linear-gradient(135deg,#7e22ce,#9333ea);}
+  .flow .box.opt{background:linear-gradient(135deg,#1d4ed8,#0ea5e9);}
+  .flow .box b{display:block; font-size:1.12em; margin-bottom:4px;}
+  .flow .arrow{font-size:1.7em; color:var(--sub); font-weight:800;}
+  .flow .arrow small{display:block; font-size:.42em; color:var(--sub); font-weight:600;}
+
+  .bridge-grid{border:2px solid var(--line); border-radius:14px; overflow:hidden;}
+  .bridge-row{display:grid; grid-template-columns:1fr 1fr 1fr;}
+  .bridge-row>div{padding:15px 18px; border-bottom:1px solid var(--line);}
+  .bridge-row .concept{background:#f1f5f9; font-weight:700; display:flex; align-items:center;}
+  .bridge-row .reg{background:#faf5ff; border-left:1px solid var(--line);}
+  .bridge-row .opt{background:#eff6ff; border-left:1px solid var(--line);}
+  .bridge-head>div{font-weight:800; color:#fff; padding:14px 18px;}
+  .bridge-head .concept{background:#334155;} .bridge-head .reg{background:var(--reg);} .bridge-head .opt{background:var(--opt);}
+  .bridge-row small{color:var(--sub); font-weight:400; display:block; margin-top:3px; font-size:.85em;}
+
+  .callout{border-radius:12px; padding:18px 22px; margin:22px 0; border-left:7px solid;}
+  .callout.key{background:#eff6ff; border-color:var(--brand);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn);}
+  .callout.good{background:var(--good-bg); border-color:var(--good);}
+  .callout.reg{background:#faf5ff; border-color:var(--reg);}
+
+  .summary-box{background:#f8fafc; border:1px solid var(--line); border-left:5px solid var(--accent); border-radius:10px; padding:14px 18px; margin:24px 0 0; font-size:.95em;}
+  .summary-box b{color:#0e7490;}
+
+  table{width:100%; border-collapse:collapse; margin:14px 0; font-size:.94em;}
+  th{background:#334155; color:#fff; padding:11px 9px; text-align:center; font-weight:700;}
+  td{padding:10px 9px; border-bottom:1px solid var(--line); text-align:center;}
+  tbody tr:nth-child(even){background:#f8fafc;}
+  .tleft{text-align:left;}
+  .pill{display:inline-block; padding:2px 10px; border-radius:999px; font-size:.8em; font-weight:700;}
+  .pill.hi{background:#fee2e2; color:#b91c1c;} .pill.mid{background:#fef3c7; color:#b45309;} .pill.lo{background:#dcfce7; color:#15803d;}
+
+  /* 編集可能な回帰入力 */
+  .editnote{display:inline-block; background:#ede9fe; color:#6d28d9; border:1px solid #ddd6fe; font-size:.82em; font-weight:700; padding:3px 12px; border-radius:999px; margin-left:8px;}
+  input.num{width:62px; padding:5px 4px; border:2px solid #ddd6fe; border-radius:7px; text-align:center; font-size:.95em; font-family:inherit; background:#faf5ff;}
+  input.num:focus{outline:none; border-color:var(--reg); background:#fff;}
+  .btn{background:#fff; border:2px solid var(--reg); color:var(--reg); padding:7px 16px; border-radius:8px; font-weight:700; cursor:pointer; font-size:.92em;}
+  .btn:hover{background:#faf5ff;}
+  .reg-cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; margin:18px 0;}
+  .reg-card{border:2px solid var(--line); border-radius:12px; padding:16px; background:#fff;}
+  .reg-card h4{margin:0 0 4px; display:flex; justify-content:space-between; align-items:baseline;}
+  .reg-card .risk{font-size:1.7em; font-weight:900; color:var(--reg);}
+  .term{display:flex; align-items:center; gap:8px; margin:6px 0; font-size:.88em;}
+  .term .tn{width:118px; flex:none; color:var(--sub);}
+  .term .ttrack{flex:1; background:#f1f5f9; border-radius:5px; height:16px; overflow:hidden;}
+  .term .tfill{height:100%; background:linear-gradient(90deg,#c084fc,#9333ea); border-radius:5px;}
+  .term .tv{width:54px; flex:none; text-align:right; font-weight:700;}
+
+  .combo{border:2px solid var(--line); border-radius:12px; padding:16px 18px; margin:14px 0;}
+  .combo h4{margin:0 0 10px;}
+  .checks{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px;}
+  .check{border-radius:10px; padding:12px; border:2px solid; font-size:.9em;}
+  .check.pass{background:var(--good-bg); border-color:var(--good);}
+  .check.fail{background:var(--bad-bg); border-color:var(--bad);}
+  .check b{display:block; margin-bottom:5px;}
+  .verdict{margin-top:10px; font-weight:800; padding:9px 14px; border-radius:8px; text-align:center;}
+  .verdict.ok{background:var(--good-bg); color:#15803d;} .verdict.ng{background:var(--bad-bg); color:#b91c1c;}
+
+  .panel-int{background:linear-gradient(135deg,#0f172a,#1e293b); color:#e2e8f0; border-radius:16px; padding:26px; margin:18px 0;}
+  .panel-int h3{color:#fff; border-color:var(--accent);}
+  .sliders{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin:18px 0;}
+  .slider-card{background:#1e293b; border-radius:12px; padding:15px;}
+  .slider-card .lbl{display:flex; justify-content:space-between; align-items:center; font-weight:700; margin-bottom:8px; font-size:.95em;}
+  .slider-card .val{font-size:1.2em; font-weight:800;}
+  .dot{display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:7px; vertical-align:middle;}
+  input[type=range]{width:100%; height:8px; -webkit-appearance:none; border-radius:6px; outline:none; cursor:pointer;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:22px; height:22px; border-radius:50%; background:#fff; border:3px solid #0ea5e9; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.4);}
+  .sumline{text-align:center; margin:6px 0 4px; font-size:.95em;} .sumline b{color:#fff;}
+  .presets{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin:10px 0 6px;}
+  .presets button{background:#334155; color:#e2e8f0; border:1px solid #475569; padding:8px 15px; border-radius:8px; cursor:pointer; font-size:.9em; font-weight:600; text-align:center;}
+  .presets button:hover{background:#475569; color:#fff;}
+  .presets button.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+
+  .matrix{display:grid; grid-template-columns:120px repeat(3,1fr); gap:10px; margin:18px 0;}
+  .mcell{border-radius:10px; padding:12px; text-align:center; font-size:.9em;}
+  .mhead{background:#334155; color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center; flex-direction:column;}
+  .mhead small{font-weight:500; opacity:.8;}
+  .mok{background:#fff; color:var(--ink); border:3px solid var(--good); transition:.2s;}
+  .mok.win{box-shadow:0 0 0 4px var(--gold); background:#fffbeb;}
+  .mng{background:#fef2f2; color:#b91c1c; border:2px dashed var(--bad); font-size:.82em;}
+  .mok .ms{font-size:1.35em; font-weight:900; color:var(--brand); margin:2px 0;}
+
+  .score-cards{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:18px 0;}
+  .score-card{background:#fff; color:var(--ink); border-radius:14px; padding:16px; box-shadow:0 4px 14px rgba(0,0,0,.22);}
+  .score-card h4{margin:0 0 2px; font-size:1.06em;} .score-card .route{color:var(--sub); font-size:.85em; margin-bottom:8px;}
+  .bigscore{font-size:2.2em; font-weight:900; color:var(--brand); line-height:1; margin:6px 0;}
+  .bd-row{display:flex; align-items:center; gap:9px; margin:6px 0; font-size:.84em;}
+  .bd-row .name{width:80px; flex:none; color:var(--sub);}
+  .bar-track{flex:1; background:#eef2f7; border-radius:6px; height:16px; overflow:hidden;}
+  .bar-fill{height:100%; border-radius:6px; transition:width .25s;}
+  .bd-row .contrib{width:46px; flex:none; text-align:right; font-weight:700;}
+
+  .result-box{background:linear-gradient(45deg,#fef9c3,#fde68a); border:3px solid var(--gold); border-radius:14px; padding:22px; margin:20px 0; text-align:center;}
+  .result-box .tot{font-size:2em; font-weight:900; color:#92400e; margin:6px 0;}
+  .result-box .winlabel{display:inline-block; background:#92400e; color:#fff; padding:4px 14px; border-radius:999px; font-weight:700; font-size:.9em; margin-top:6px;}
+
+  .formula{background:#0f172a; color:#fff; padding:14px 18px; border-radius:10px; font-family:"Courier New",monospace; text-align:center; margin:12px 0; font-size:1.0em;}
+  .var{font-weight:800;}
+  .v1{color:#f87171;} .v2{color:#60a5fa;} .v3{color:#2dd4bf;} .v4{color:#c084fc;}
+
+  .steps-chips{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{background:#eff6ff; color:var(--brand-d); border:1px solid #bfdbfe; padding:6px 14px; border-radius:999px; font-size:.9em; font-weight:700;}
+
+  /* クイズ */
+  .quiz{border:2px solid #bfdbfe; border-radius:12px; padding:18px 20px; margin:16px 0; background:#f8fbff;}
+  .quiz .q{font-weight:700; margin:0 0 8px;}
+  .quiz .qnum{display:inline-block; background:var(--brand); color:#fff; border-radius:6px; padding:1px 9px; margin-right:8px; font-size:.85em;}
+  .quiz details{margin-top:8px;} .quiz summary{color:var(--brand-d); font-weight:700;}
+  .quiz .ans{margin-top:8px; background:#fff; border-left:4px solid var(--good); padding:10px 14px; border-radius:6px; font-size:.95em;}
+
+  .apply-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:16px; margin:16px 0;}
+  .apply-card{border:2px solid var(--line); border-radius:12px; padding:16px; background:#fff;}
+  .apply-card h4{margin:0 0 6px; color:#0f766e;}
+  .apply-card .small{font-size:.88em; color:var(--sub);}
+
+  .tryit{background:#f0fdfa; border:2px dashed var(--m3); border-radius:12px; padding:18px 20px; margin:20px 0;}
+  .tryit h4{margin:0 0 8px; color:#0f766e;}
+  ol.guide{margin:8px 0 0; padding-left:22px;} ol.guide li{margin:8px 0;}
+  details.note{margin-top:18px;} details.note>summary{cursor:pointer; font-weight:700; font-size:1.02em; color:var(--brand-d);}
+
+  /* 用語集 */
+  .glossary{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin:14px 0;}
+  .term-card{border:1px solid var(--line); border-radius:10px; padding:14px 16px; background:#fff;}
+  .term-card dt{font-weight:800; color:#0f172a; margin-bottom:3px;}
+  .term-card dd{margin:0; font-size:.92em; color:var(--sub);}
+
+  footer{text-align:center; color:var(--sub); font-size:.9em; padding:30px 10px;}
+  @media(max-width:820px){
+    body{font-size:16px;}
+    .bridge-row,.bridge-head{grid-template-columns:1fr;}
+    .bridge-row .reg,.bridge-row .opt,.bridge-head .reg,.bridge-head .opt{border-left:none;}
+    .score-cards{grid-template-columns:1fr;}
+    .flow{grid-template-columns:1fr;} .flow .arrow{transform:rotate(90deg);}
+    .matrix{grid-template-columns:90px repeat(3,1fr); gap:6px;}
+    header.hero h1{font-size:1.5em;}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>🔧 故障予測から保守最適化へ</h1>
+  <p>通信施設の故障を「予測」し、その予測をもとに修理部品・人材・車両の組み合わせを「最適化」する——設備保守の生産性向上を題材にしたハンズオン教材</p>
+  <p style="font-size:1em;opacity:.9;">前半は皆さんが学んだ<b>回帰分析（故障予測）</b>、後半は<b>最適化（保守リソース割当）</b>。2つは「予測 → 意思決定」で一直線につながります。</p>
+  <span class="tag">数値を動かして何度でも試せる自習対応版</span>
+</header>
+
+<nav class="toc">
+  <a href="#goals">学習目標</a>
+  <a href="#s0">0. 全体像</a>
+  <a href="#s1">1. 故障予測（回帰）</a>
+  <a href="#s2">2. 保守リソース</a>
+  <a href="#s3">3. 最適化の定義</a>
+  <a href="#s4">4. 制約チェック</a>
+  <a href="#s5">5. 目的関数（体験）</a>
+  <a href="#s6">6. 最適解</a>
+  <a href="#s7">7. 感度分析</a>
+  <a href="#s8">8. 理解度チェック</a>
+  <a href="#s9">9. 実務への応用</a>
+  <a href="#s10">10. まとめ・用語集</a>
+</nav>
+
+<div class="wrap">
+
+<!-- 学習目標 -->
+<div class="goals" id="goals">
+  <h2>🎯 この教材で身につくこと</h2>
+  <ul>
+    <li>回帰分析（予測）と最適化（意思決定）が、1つの業務フローの前後段としてつながることを理解する</li>
+    <li>「目的変数・説明変数」の発想を「目的関数・決定変数・制約条件」へ橋渡しできる</li>
+    <li>同じ予測でも、<b>重み（方針）次第で最適な打ち手が変わる</b>ことを、自分で数値を動かして体感する</li>
+    <li>自分の現場の課題を「予測 → 最適化」の型に当てはめ、必要なデータと落とし穴を見通せる</li>
+  </ul>
+  <div class="who">対象：回帰分析（目的変数・説明変数）を学んだ方。所要 約30〜40分。<b>青い表の数値や黒いパネルのスライダーは自由に動かせます</b>——結論がどう変わるか、繰り返し試してください。</div>
+</div>
+
+<!-- ===== 0. 全体像 ===== -->
+<section id="s0">
+  <h2 class="sec-title"><span class="sec-num">0</span>全体像 — 「予測」と「意思決定」をつなぐ</h2>
+  <p class="lead">設備保守の生産性は、「壊れそうな所を当てる力（予測）」と「限られたリソースを賢く配る力（意思決定）」の掛け算で決まります。前者が回帰、後者が最適化です。</p>
+
+  <div class="flow">
+    <div class="box reg"><b>① 故障予測（回帰）</b>施設の状態（説明変数）から<br>30日以内の故障確率（目的変数）を予測</div>
+    <div class="arrow">→<small>予測が入力に</small></div>
+    <div class="box opt"><b>② 保守最適化</b>「要対応」施設に<br>部品＋人材＋車両を最適割当</div>
+  </div>
+
+  <div class="callout key">
+    <b>ねらい：</b> 回帰の<b>出力（どこが・どれだけ壊れそうか）</b>が、そのまま最適化の<b>入力（どこを優先し、誰を送るか）</b>になります。
+    皆さんが学んだ「目的変数・説明変数」の考え方を土台に、最適化の「目的関数・決定変数・制約条件」へ橋渡しします。
+  </div>
+
+  <h3>概念の対応表</h3>
+  <div class="bridge-grid">
+    <div class="bridge-row bridge-head">
+      <div class="concept">考え方の役割</div>
+      <div class="reg">① 回帰分析（故障予測）</div>
+      <div class="opt">② 最適化（保守割当）</div>
+    </div>
+    <div class="bridge-row">
+      <div class="concept">良くしたい／知りたい対象</div>
+      <div class="reg">目的変数 y<small>30日以内の故障確率</small></div>
+      <div class="opt">目的関数<small>最大化したい保守生産性スコア</small></div>
+    </div>
+    <div class="bridge-row">
+      <div class="concept">使うもの・動かすもの</div>
+      <div class="reg">説明変数 x<small>稼働年数・通信負荷・故障回数・経過日数</small></div>
+      <div class="opt">決定変数<small>どの保守班をどの施設へ割り当てるか</small></div>
+    </div>
+    <div class="bridge-row">
+      <div class="concept">重み付け</div>
+      <div class="reg">回帰係数<small>データから「学習」して決まる</small></div>
+      <div class="opt">重み（ウエイト）<small>「何を優先するか」を人が方針として与える</small></div>
+    </div>
+    <div class="bridge-row">
+      <div class="concept">守るべき条件</div>
+      <div class="reg">（明示的にはない）</div>
+      <div class="opt">制約条件<small>スキル・部品在庫・車両・到着時間</small></div>
+    </div>
+    <div class="bridge-row">
+      <div class="concept">アウトプット</div>
+      <div class="reg">予測値<small>「どこが壊れそうか」</small></div>
+      <div class="opt">最適解（意思決定）<small>「誰が・何を持って・どこへ行くか」</small></div>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <b>回帰との一番の違い：</b> 回帰は係数を<b>データから学習</b>しますが、最適化の重みは<b>「緊急対応を優先するか、適材適所を優先するか」という方針</b>として与えます。
+    同じ予測でも、重みを変えれば最適な割り当てが変わる——第5・7章で体感してください。
+  </div>
+
+  <div class="summary-box"><b>この章のまとめ：</b> 保守の生産性＝「予測（回帰）」×「意思決定（最適化）」。回帰で学んだ目的変数・説明変数は、最適化の目的関数・決定変数に対応する。違いは、重みが「学習」ではなく「方針」である点。</div>
+</section>
+
+<!-- ===== 1. 故障予測（回帰・編集可能） ===== -->
+<section id="s1">
+  <h2 class="sec-title"><span class="sec-num reg">1</span>第1段：故障予測（回帰を画面で再現）</h2>
+  <p class="lead">3つの通信施設について、状態を表す4つの説明変数から「30日以内の故障確率」を回帰式で予測します。皆さんが学んだ「説明変数 × 係数の足し合わせ」そのものです。</p>
+
+  <h3 class="reg">回帰式（学習済みの係数）</h3>
+  <div class="formula" style="text-align:left;">
+    故障確率(%) = 4.0（切片）<br>
+    &nbsp;&nbsp;+ 2.20 × 稼働年数 &nbsp;+ 0.30 × 通信負荷 &nbsp;+ 5.50 × 過去故障回数 &nbsp;+ 0.06 × 経過日数
+  </div>
+  <p class="lead" style="font-size:.95em;margin-top:6px;">※ 実務ではロジスティック回帰などを用いますが、本教材では理解のため線形回帰で表現しています。係数は「その要因が1増えると故障確率が何%上がるか」を表します。</p>
+
+  <h3 class="reg">施設データ（説明変数）と予測結果 <span class="editnote">✎ 数値を編集できます</span></h3>
+  <p class="lead" style="font-size:.95em;">セルの数値を書き換えると、故障確率も、後半の最適化の結論も連動して変わります。色々な状況を試してみましょう。</p>
+  <table>
+    <thead><tr><th>施設</th><th>稼働年数</th><th>通信負荷(%)</th><th>過去故障回数</th><th>経過日数</th><th>重要度(1-5)</th><th>故障確率（予測）</th></tr></thead>
+    <tbody id="facBody"></tbody>
+  </table>
+  <p><button class="btn" id="resetReg">↺ 初期値に戻す</button></p>
+
+  <h3 class="reg">予測の内訳（どの要因が効いているか）</h3>
+  <div class="reg-cards" id="regCards"></div>
+
+  <div class="callout reg">
+    <b>予測 → 優先度へ：</b> 故障確率だけでなく<b>施設の重要度（止まったときの影響の大きさ）</b>も掛け合わせ、
+    <b>緊急度 ＝ 故障確率 × 重要度</b>として最適化に渡します。下表が最適化の入力になります。
+  </div>
+  <table>
+    <thead><tr><th>施設</th><th>故障確率</th><th>重要度</th><th>緊急度（生データ）</th><th>緊急度（0–100換算）</th></tr></thead>
+    <tbody id="urgBody"></tbody>
+  </table>
+
+  <div class="summary-box"><b>この章のまとめ：</b> 故障確率は「説明変数×係数」の足し合わせ。係数が大きい要因（ここでは過去故障回数）ほど予測への効きが大きい。予測値は重要度と掛け合わせて「緊急度」となり、次の最適化の優先度になる。</div>
+</section>
+
+<!-- ===== 2. 保守リソース ===== -->
+<section id="s2">
+  <h2 class="sec-title"><span class="sec-num">2</span>第2段の準備：保守リソース（部品・人材・車両）</h2>
+  <p class="lead">予測で「要対応」と分かったら、次は誰をどう送るか。保守班は「技術者（スキル・経験）＋ 保有部品 ＋ 車両」のセットで、3班あります。</p>
+
+  <h3>各施設の故障種別と要求</h3>
+  <table>
+    <thead><tr><th>施設</th><th>故障種別</th><th>要求スキル</th><th>必要な修理部品</th></tr></thead>
+    <tbody>
+      <tr><td>F1 渋谷中央局</td><td>電源系故障</td><td>電源 Lv4 以上</td><td class="tleft">整流器ユニット、電源モジュール</td></tr>
+      <tr><td>F2 横浜港北基地局</td><td>無線・アンテナ系</td><td>無線 Lv3＋高所作業</td><td class="tleft">アンテナ素子、同軸ケーブル</td></tr>
+      <tr><td>F3 多摩ニュータウン局</td><td>光伝送系</td><td>光ファイバ Lv3 以上</td><td class="tleft">光トランシーバ、光コネクタ</td></tr>
+    </tbody>
+  </table>
+
+  <h3>保守班（技術者＋部品＋車両）</h3>
+  <table>
+    <thead><tr><th>班</th><th>拠点</th><th>経験</th><th>保有スキル（最高Lv）</th><th>保有部品</th><th>車両</th><th>単価(円/日)</th></tr></thead>
+    <tbody>
+      <tr><td>A ベテラン班</td><td>多摩TC</td><td>20年</td><td class="tleft">電源Lv5、光Lv3、無線Lv2</td><td class="tleft">電源系・光系</td><td>一般作業車</td><td>42,000</td></tr>
+      <tr><td>B 機動班</td><td>横浜</td><td>10年</td><td class="tleft">無線Lv4、電源Lv3</td><td class="tleft">無線・アンテナ系</td><td>高所作業車</td><td>34,000</td></tr>
+      <tr><td>C 若手班</td><td>渋谷</td><td>5年</td><td class="tleft">光Lv4、電源Lv4、無線Lv2</td><td class="tleft">光系・電源系</td><td>一般作業車</td><td>28,000</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout key">
+    <b>読み解き：</b> A班は電源の専門家だが拠点が多摩で渋谷から遠い。C班は光の専門家で渋谷拠点だが多摩から遠い。B班は高所作業車を持つ唯一の班で、無線系のF2はB班しか対応できません。<b>「得意分野」と「近さ」が一致しない</b>——ここが最適化の腕の見せ所です。
+  </div>
+  <div class="summary-box"><b>この章のまとめ：</b> リソースには「スキル・部品・車両・拠点・単価」という複数の属性があり、それぞれが制約や評価に効く。得意分野と近さが一致しないため、単純な「専門家に任せる」では最適にならない。</div>
+</section>
+
+<!-- ===== 3. 最適化の定義 ===== -->
+<section id="s3">
+  <h2 class="sec-title"><span class="sec-num">3</span>最適化問題として書き起こす</h2>
+  <p class="lead">問題を「決定変数・目的関数・制約条件」の3点セットで定義します。最適化に共通の型です。</p>
+  <div class="steps-chips">
+    <span class="chip">① 決定変数：何を決める？</span>
+    <span class="chip">② 目的関数：何を良くする？</span>
+    <span class="chip">③ 制約条件：何を守る？</span>
+  </div>
+
+  <h3>① 決定変数</h3>
+  <p>「保守班 C を施設 F に割り当てるか（はい／いいえ）」を表す変数 <b>x(班, 施設)</b>。3班 × 3施設の割り当てを決めます。</p>
+
+  <h3>② 目的関数（保守生産性スコア）</h3>
+  <p>割り当てごとに4つの指標を重み付き合計し、全施設の合計を<b>最大化</b>します。</p>
+  <div class="formula">
+    生産性 = <span class="var v1">緊急対応</span>×w₁ + <span class="var v2">コスト</span>×w₂ + <span class="var v3">到着時間</span>×w₃ + <span class="var v4">スキル適合</span>×w₄
+  </div>
+  <p class="lead" style="margin-top:6px;font-size:.95em;">
+    <b>緊急対応</b>＝緊急度の高い施設へ素早く対応できるほど高い（ダウンタイム削減効果）／
+    <b>コスト</b>＝人件費・移動費が低いほど高い／
+    <b>到着時間</b>＝近いほど高い／
+    <b>スキル適合</b>＝要求に対し過不足なく適材適所なほど高い。w₁〜w₄ は<b>方針として自分で決めます</b>（第5章）。
+  </p>
+
+  <h3>③ 制約条件</h3>
+  <table>
+    <thead><tr><th>制約</th><th>内容</th><th>破ると…</th></tr></thead>
+    <tbody>
+      <tr><td>スキル制約</td><td class="tleft">班の保有スキル ≥ 施設の要求（高所作業の要否を含む）</td><td>施工不能</td></tr>
+      <tr><td>部品制約</td><td class="tleft">必要な修理部品を班が保有</td><td>修理不能</td></tr>
+      <tr><td>車両制約</td><td class="tleft">作業に必要な車両（高所作業車など）を保有</td><td>作業不能</td></tr>
+      <tr><td>割当制約</td><td class="tleft">1つの班は同時に1施設まで／各施設に1班</td><td>二重割当</td></tr>
+    </tbody>
+  </table>
+  <div class="summary-box"><b>この章のまとめ：</b> 最適化は「決定変数（選べるもの）・目的関数（良くしたいもの）・制約条件（守るべき線）」の3点セットで定義する。重みは目的関数の中で各指標の優先度を表す。</div>
+</section>
+
+<!-- ===== 4. 制約チェック ===== -->
+<section id="s4">
+  <h2 class="sec-title"><span class="sec-num">4</span>制約チェック — 対応できる班を絞る</h2>
+  <p class="lead">スコアを計算する前に「そもそも対応可能か」を判定します。実行不可の割り当ては、どんなにスコアが高くても選べません。</p>
+
+  <div class="combo">
+    <h4>🎯 F2 横浜港北（無線・アンテナ系）に対応できるのは？</h4>
+    <div class="checks">
+      <div class="check fail"><b>A ベテラン班 ❌</b>無線Lv2 ＜ 要Lv3<br>高所作業車なし</div>
+      <div class="check pass"><b>B 機動班 ✅</b>無線Lv4 ≥ 要Lv3<br>高所作業車あり・部品○</div>
+      <div class="check fail"><b>C 若手班 ❌</b>無線Lv2 ＜ 要Lv3<br>高所作業車なし</div>
+    </div>
+    <div class="verdict ok">→ F2 は B 機動班のみ実行可能（高所作業車が決め手）</div>
+  </div>
+
+  <div class="combo">
+    <h4>🎯 F1 渋谷中央局（電源系）／ F3 多摩（光伝送系）に対応できるのは？</h4>
+    <div class="checks">
+      <div class="check pass"><b>F1：A も C も可 ✅</b>A 電源Lv5・C 電源Lv4（要Lv4）<br>両班とも電源部品を保有</div>
+      <div class="check pass"><b>F3：A も C も可 ✅</b>A 光Lv3（要Lv3）・C 光Lv4<br>両班とも光部品を保有</div>
+      <div class="check fail"><b>B は F1・F3 とも不可 ❌</b>電源Lv3＜Lv4／光スキルなし</div>
+    </div>
+    <div class="verdict ok">→ F1・F3 は A班・C班で分担。どちらをどちらに割り当てるかが争点</div>
+  </div>
+
+  <div class="callout good">
+    <b>実行可能な割り当ては2通りだけ：</b><br>
+    案1）A→F1、C→F3（＋B→F2）　　案2）A→F3、C→F1（＋B→F2）<br>
+    制約が候補を一気に絞り込みました。残るは「どちらが生産性を最大化するか」——重み次第で答えが変わります（第6章）。
+  </div>
+  <div class="summary-box"><b>この章のまとめ：</b> 制約条件はスコア計算の前に候補を絞り込む「足切り」。ここでは実行可能な全体割当が2通りに絞られた。B班→F2は唯一対応可能なので方針に関係なく確定する。</div>
+</section>
+
+<!-- ===== 5. 目的関数（インタラクティブ） ===== -->
+<section id="s5">
+  <h2 class="sec-title"><span class="sec-num">5</span>目的関数を計算する（重みを動かす）</h2>
+  <p class="lead">実行可能な各割り当てペアの指標スコア（0〜100）を求めます。コスト・到着・スキル適合は固定、緊急対応は第1段の予測（緊急度）に連動します。<b>重みを変えると生産性がどう動くか</b>をスライダーで体感しましょう。</p>
+
+  <h4>実行可能ペアの指標スコア（緊急対応は予測に連動）</h4>
+  <table>
+    <thead><tr><th>割り当て</th>
+      <th><span class="dot" style="background:var(--m1)"></span>緊急対応</th>
+      <th><span class="dot" style="background:var(--m2)"></span>コスト</th>
+      <th><span class="dot" style="background:var(--m3)"></span>到着時間</th>
+      <th><span class="dot" style="background:var(--m4)"></span>スキル適合</th></tr></thead>
+    <tbody id="pairTable"></tbody>
+  </table>
+
+  <div class="panel-int">
+    <h3>🎛️ 重み（方針）を設定する</h3>
+    <div class="presets" id="presets"></div>
+    <div class="sliders" id="sliders"></div>
+    <div class="sumline">合計ウエイト：<b><span id="sumPct">100</span></b>（自動で正規化して計算します）</div>
+    <div class="score-cards" id="scoreCards"></div>
+    <p style="text-align:center;font-size:.9em;opacity:.85;margin:4px 0 0;">※ B班→F2は全案共通（固定）のため、争点となるF1・F3のペアを表示しています。</p>
+  </div>
+
+  <div class="callout key">
+    <b>観察：</b>「スキル適合」を上げると A班→F1（電源の専門家）と C班→F3（光の専門家）が有利に。
+    「緊急対応」や「到着時間」を上げると、緊急度の高い渋谷へ近接拠点から急行できる C班→F1 が有利に。<b>重み＝方針が、評価を変えます。</b>
+  </div>
+  <div class="summary-box"><b>この章のまとめ：</b> 目的関数は各指標スコア×重みの合計。重みを変えると、各ペアの総合スコアの大小関係が入れ替わりうる。緊急対応は予測に連動するので、第1段の数値を変えてもここが動く。</div>
+</section>
+
+<!-- ===== 6. 最適解 ===== -->
+<section id="s6">
+  <h2 class="sec-title"><span class="sec-num">6</span>最適解を選ぶ（割り当てが入れ替わる）</h2>
+  <p class="lead">実行可能な割り当てをすべて評価し、生産性が最大になる組み合わせを選びます。下のマトリクスと結論は第5章の重み・第1章の予測と連動します。</p>
+
+  <div class="matrix" id="matrix"></div>
+
+  <div class="result-box">
+    <h3 style="border:none;padding:0;margin:0 0 6px;">🏆 最適な割り当て</h3>
+    <div id="bestText" style="font-weight:700;margin:6px 0;"></div>
+    <div class="tot" id="bestTotal"></div>
+    <div class="winlabel" id="bestLabel"></div>
+    <div id="bestNote" style="margin-top:8px;font-size:.95em;"></div>
+  </div>
+
+  <div class="callout good">
+    <b>ここが学びの核心：</b> 同じ故障予測・同じ制約でも、<b>重み（方針）次第で最適な割り当てそのものが入れ替わります</b>。
+    「適材適所」を重視すれば専門家を得意分野へ、「緊急対応のスピード」を重視すれば近い班を緊急現場へ——どちらも“正解”です。最適化は方針を数値で語る道具だと分かります。
+  </div>
+  <div class="summary-box"><b>この章のまとめ：</b> 全候補を評価して最大スコアを選ぶのが最適解。重みで最適解が入れ替わるのは「正解が方針に依存する」ため。第1段の予測を変えても緊急度が変わり、最適解が動くことがある。</div>
+</section>
+
+<!-- ===== 7. 感度分析 ===== -->
+<section id="s7">
+  <h2 class="sec-title"><span class="sec-num">7</span>感度分析 — 方針を変えると結論はどう動くか</h2>
+  <p class="lead">代表的な方針ごとに、最適な割り当てと生産性を比べます（第5章のスライダーを動かすと「現在設定」も更新されます）。</p>
+  <table id="sensTable">
+    <thead><tr><th>重み設定（緊急/コスト/到着/スキル）</th><th>最適な割り当て</th><th>生産性スコア</th></tr></thead>
+    <tbody id="sensBody"></tbody>
+  </table>
+  <div class="callout warn">
+    <b>実務での使い方：</b> 大規模障害の発生直後は「緊急対応重視」で近い班を急行させ、平常時は「適材適所重視」で熟練者を計画的に配置、コスト改善期は「コスト重視」へ。
+    <b>重みを切り替えるだけで、経営方針を保守オペレーションに落とし込めます。</b>
+  </div>
+  <div class="summary-box"><b>この章のまとめ：</b> 感度分析は「前提（重みやデータ）が変わると結論がどれだけ動くか」を見る作業。結論が安定なら自信を持って実行でき、敏感なら前提の精度に注意が要ると分かる。</div>
+</section>
+
+<!-- ===== 8. 理解度チェック ===== -->
+<section id="s8">
+  <h2 class="sec-title"><span class="sec-num">8</span>理解度チェック（答えは隠してあります）</h2>
+  <p class="lead">まず自分で考えてから「答えを見る」を開いてください。第1章の数値や第5章のスライダーを実際に動かして確かめると、より深まります。</p>
+
+  <div class="quiz">
+    <p class="q"><span class="qnum">Q1</span>故障確率の式で、1単位増えたときに最も大きく確率を押し上げる説明変数はどれ？ それはなぜ？</p>
+    <details><summary>答えを見る</summary>
+      <div class="ans"><b>過去故障回数（係数5.50）。</b>係数が4変数の中で最大だから。係数は「その変数が1増えると目的変数（故障確率）が何%上がるか」を表す＝回帰係数の意味そのもの。なお経過日数は係数0.06と小さいが、値自体が大きい（数百日）ため合計への寄与は無視できない。<b>「効き」は係数×実際の値で見る</b>のがコツ。</div>
+    </details>
+  </div>
+
+  <div class="quiz">
+    <p class="q"><span class="qnum">Q2</span>「スキル適合」の重みを最大にすると最適割当はどうなる？ 「緊急対応」を最大にすると？ それぞれの理由は？</p>
+    <details><summary>答えを見る</summary>
+      <div class="ans"><b>スキル適合重視 → A→F1・C→F3（専門家を得意分野へ）。緊急対応重視 → C→F1・A→F3（近い班を緊急現場へ）。</b>前者は電源の専門家A・光の専門家Cをそれぞれの分野に充てるとスキル適合が最大になるから。後者は緊急度の高いF1渋谷へ、近接拠点のC班が急行するとダウンタイム削減が大きいから。第5章のスライダーで確かめられます。</div>
+    </details>
+  </div>
+
+  <div class="quiz">
+    <p class="q"><span class="qnum">Q3</span>B班→F2は、重みをどう変えても必ず選ばれます。これは目的関数と制約条件のどちらの働き？</p>
+    <details><summary>答えを見る</summary>
+      <div class="ans"><b>制約条件の働き。</b>F2（無線・高所作業）に対応できる班はB班だけ（高所作業車を持つ唯一の班）。実行可能な選択肢が1つしかないため、スコア（目的関数）を計算するまでもなく確定する。<b>制約が解の範囲を決め、目的関数はその中での優劣を決める</b>という役割分担の好例。</div>
+    </details>
+  </div>
+
+  <div class="quiz">
+    <p class="q"><span class="qnum">Q4</span>「適材適所重視」を選んだ状態で、第1章のF3多摩を高リスク化（過去故障回数・通信負荷・重要度を大きく上げる）と、最適な割り当てはどう変わる？ なぜ？</p>
+    <details><summary>答えを見る</summary>
+      <div class="ans"><b>案1（適材適所：A→F1・C→F3）から案2（緊急対応：A→F3・C→F1）へ反転する。</b>F3の故障確率が跳ね上がって緊急度が増すと、F3に近いA班を急行させる案2の「緊急対応」価値が高まり、案1の「スキル適合」の優位を上回るため。<b>予測（回帰）の出力が、最適化の結論そのものを動かす</b>——予測と意思決定の連結を示す好例。第1章の数値を実際に変えて確かめましょう（例：F3の過去故障回数12・通信負荷90・重要度5）。</div>
+    </details>
+  </div>
+
+  <div class="quiz">
+    <p class="q"><span class="qnum">Q5</span>「コストは安いほど良い」と「予算は500万円以内」は、どちらも費用の話です。最適化ではどう区別する？</p>
+    <details><summary>答えを見る</summary>
+      <div class="ans"><b>前者は目的関数（最小化したい指標）、後者は制約条件（必ず満たす線引き）。</b>同じ費用でも、「少しでも良くしたい」のか「この線を超えてはいけない」のかで扱いが違う。自分の課題でこの2つを混同しないことが、最適化を正しく組む第一歩。</div>
+    </details>
+  </div>
+</section>
+
+<!-- ===== 9. 実務への応用 ===== -->
+<section id="s9">
+  <h2 class="sec-title"><span class="sec-num">9</span>実務への応用 — 自分の現場へ移植する</h2>
+
+  <h3>STEP A：まず「予測 → 最適化」の型に当てはめる</h3>
+  <div class="tryit">
+    <h4>📝 組み立てシート</h4>
+    <ol class="guide">
+      <li><b>【予測】何を当てたい？</b> — 故障確率・残存寿命・需要など。＝回帰の目的変数 y</li>
+      <li><b>【予測】説明変数は？</b> — 結果に効きそうな状態・履歴データを洗い出す</li>
+      <li><b>【橋渡し】予測をどう優先度に変える？</b> — 例：故障確率 × 影響度 ＝ 緊急度</li>
+      <li><b>【最適化】決定変数は？</b> — 自分が配れるリソース（人・部品・車両・時間）の割当</li>
+      <li><b>【最適化】評価指標と重みは？</b> — 生産性を測る軸を分解し、重要度を方針として決める</li>
+      <li><b>【最適化】制約条件は？</b> — 絶対に守る線（スキル・在庫・車両・到着期限・同時稼働数）</li>
+      <li><b>実行可能解を絞り、スコアで比較する</b></li>
+    </ol>
+  </div>
+
+  <h3>STEP B：予測のために集めるデータ</h3>
+  <table>
+    <thead><tr><th>種類</th><th>例</th><th>役割</th></tr></thead>
+    <tbody>
+      <tr><td>状態データ</td><td class="tleft">稼働年数、温度・湿度、通信負荷、電圧変動</td><td>説明変数（いまの状態）</td></tr>
+      <tr><td>履歴データ</td><td class="tleft">過去の故障回数・日時、保守実施日、部品交換履歴</td><td>説明変数（これまでの経緯）</td></tr>
+      <tr><td>結果ラベル</td><td class="tleft">実際に故障したか／いつ故障したか</td><td>目的変数（学習の答え合わせ）</td></tr>
+      <tr><td>リソース情報</td><td class="tleft">要員のスキル・所在、部品在庫、車両、距離</td><td>最適化の制約・評価</td></tr>
+    </tbody>
+  </table>
+
+  <h3>STEP C：他業種への横展開（同じ型が効く）</h3>
+  <div class="apply-grid">
+    <div class="apply-card"><h4>製造業（予知保全）</h4><div class="small">予測：設備の故障・不良発生／最適化：保全要員・治工具・ライン停止枠の割当。緊急度＝故障確率×ライン重要度。</div></div>
+    <div class="apply-card"><h4>物流・配送</h4><div class="small">予測：エリア別の需要量／最適化：車両・ドライバ・ルートの割当（配送計画＝VRP）。制約：積載量・労働時間。</div></div>
+    <div class="apply-card"><h4>小売・サービス</h4><div class="small">予測：時間帯別の来店・需要／最適化：人員シフト・在庫配分。重み：人件費 vs 欠品・待ち時間。</div></div>
+    <div class="apply-card"><h4>ITインフラ運用</h4><div class="small">予測：障害・アラートの発生／最適化：オンコール要員・対応窓口の割当。制約：スキル・稼働時間。</div></div>
+  </div>
+
+  <h3>STEP D：落とし穴と限界（深く考えるために）</h3>
+  <div class="callout warn">
+    <ul style="margin:0;padding-left:20px;">
+      <li><b>相関と因果は別物：</b>「経過日数が長い施設で故障が多い」は相関。それ自体が原因とは限らない（古い設備に偏っている等の交絡に注意）。</li>
+      <li><b>外挿は危険：</b>学習データの範囲外（例：稼働30年）の予測は当たらないことが多い。</li>
+      <li><b>過学習：</b>過去に当てはめすぎたモデルは、未来の新しいデータで外す。検証用データでの確認が必須。</li>
+      <li><b>データの偏り：</b>記録の取り方に癖があると予測も歪む。欠損・異常値の扱いを決める。</li>
+      <li><b>線形回帰の限界：</b>確率は本来0〜100%に収まるべきで、線形だと範囲外も出る。実務はロジスティック回帰等を使う。</li>
+      <li><b>重みは主観：</b>最適化の重みは「方針」。誰の価値観かを明確にし、関係者で合意することが重要。</li>
+      <li><b>前提が変われば再計算：</b>最適解はあくまで「与えた前提での最適」。状況が変わったら回し直す。</li>
+    </ul>
+  </div>
+
+  <h3>STEP E：次の一歩（実際に解いてみる道具）</h3>
+  <table>
+    <thead><tr><th>やりたいこと</th><th>道具</th><th>ひとこと</th></tr></thead>
+    <tbody>
+      <tr><td>予測モデルを作る</td><td>Excel回帰分析、Python（scikit-learn）</td><td class="tleft">まずは線形・ロジスティック回帰から</td></tr>
+      <tr><td>小規模な最適化を解く</td><td>Excel「ソルバー」</td><td class="tleft">数式と制約を入れるだけで最適解が出る。学習に最適</td></tr>
+      <tr><td>本格的な割当・配送最適化</td><td>Python（PuLP、OR-Tools）</td><td class="tleft">大規模・整数計画・経路最適化まで対応</td></tr>
+    </tbody>
+  </table>
+  <div class="summary-box"><b>この章のまとめ：</b> 同じ「予測→最適化」の型は製造・物流・小売・IT運用に横展開できる。鍵は良質なデータと、相関と因果・過学習・外挿などの限界を理解した運用。小さくはExcelソルバーから始められる。</div>
+</section>
+
+<!-- ===== 10. まとめと用語集 ===== -->
+<section id="s10">
+  <h2 class="sec-title"><span class="sec-num">10</span>全体のまとめと用語集</h2>
+
+  <h3>全体のまとめ（3行で）</h3>
+  <div class="callout good">
+    ① 回帰で「どこが壊れそうか」を<b>予測</b>し、その予測を優先度に変えて最適化の入力にする。<br>
+    ② 最適化は「決定変数・目的関数・制約条件」で定義し、制約が候補を絞り、目的関数が優劣を決める。<br>
+    ③ <b>重み（方針）が変われば最適な打ち手も変わる</b>。最適化は経営方針を数値で語り、実行に落とし込む道具。
+  </div>
+
+  <h3>用語集</h3>
+  <div class="glossary">
+    <div class="term-card"><dl><dt>目的変数 y</dt><dd>予測したい結果。本教材では「30日以内の故障確率」。</dd></dl></div>
+    <div class="term-card"><dl><dt>説明変数 x</dt><dd>結果に効く要因。稼働年数・通信負荷・故障回数・経過日数など。</dd></dl></div>
+    <div class="term-card"><dl><dt>回帰係数</dt><dd>各説明変数の効きの大きさ。データから学習して決まる。</dd></dl></div>
+    <div class="term-card"><dl><dt>目的関数</dt><dd>最適化で最大化／最小化したい総合指標。ここでは保守生産性スコア。</dd></dl></div>
+    <div class="term-card"><dl><dt>決定変数</dt><dd>自分で決める選択。どの班をどの施設に割り当てるか。</dd></dl></div>
+    <div class="term-card"><dl><dt>制約条件</dt><dd>必ず満たすべき線引き。スキル・部品・車両・到着時間など。</dd></dl></div>
+    <div class="term-card"><dl><dt>重み（ウエイト）</dt><dd>目的関数で各指標の優先度を表す係数。方針として人が与える。</dd></dl></div>
+    <div class="term-card"><dl><dt>緊急度</dt><dd>故障確率 × 重要度。予測を最適化の優先度に変換した値。</dd></dl></div>
+    <div class="term-card"><dl><dt>実行可能解</dt><dd>すべての制約を満たす割り当て。この中だけが候補になる。</dd></dl></div>
+    <div class="term-card"><dl><dt>最適解</dt><dd>実行可能解のうち目的関数が最大（最良）になるもの。</dd></dl></div>
+    <div class="term-card"><dl><dt>感度分析</dt><dd>前提（重み・データ）を変えると結論がどれだけ動くかを調べること。</dd></dl></div>
+    <div class="term-card"><dl><dt>過学習</dt><dd>過去データに当てはめすぎ、未知のデータで予測が外れる状態。</dd></dl></div>
+  </div>
+</section>
+
+<footer>
+  故障予測 × 保守最適化 ハンズオン教材 ／ 数値を動かして「予測」と「方針（重み）」が打ち手を変えることを体感する
+</footer>
+
+</div>
+
+<script>
+// ===== 第1段：回帰（故障予測・編集可能） =====
+const coef = {b0:4.0, year:2.20, load:0.30, fail:5.50, days:0.06};
+const facMeta = {
+  F1:{name:"渋谷中央局"}, F2:{name:"横浜港北基地局"}, F3:{name:"多摩ニュータウン局"},
+};
+const DEFAULTS = {
+  F1:{year:12, load:85, fail:3, days:220, imp:5},
+  F2:{year:8,  load:60, fail:2, days:120, imp:3},
+  F3:{year:5,  load:40, fail:1, days:60,  imp:4},
+};
+let facData = JSON.parse(JSON.stringify(DEFAULTS));
+const facs=["F1","F2","F3"];
+const fields=[["year","稼働年数"],["load","通信負荷(%)"],["fail","過去故障回数"],["days","経過日数"],["imp","重要度(1-5)"]];
+
+function clamp(x,lo,hi){return Math.max(lo,Math.min(hi,x));}
+function predict(d){
+  const terms=[
+    {label:"切片", v:coef.b0},
+    {label:"稼働年数", v:coef.year*d.year},
+    {label:"通信負荷", v:coef.load*d.load},
+    {label:"過去故障回数", v:coef.fail*d.fail},
+    {label:"経過日数", v:coef.days*d.days},
+  ];
+  let risk=terms.reduce((a,t)=>a+t.v,0);
+  risk=clamp(risk,0,100);
+  return {risk,terms};
+}
+// 緊急度の換算基準は「初期データでの最大緊急度」に固定する。
+// こうすると初期値は F1=100 を再現しつつ、予測を編集すると緊急度が基準に対して動く
+// （＝予測の変化が最適化の結論に伝わる）。
+const URG_REF = Math.max(...facs.map(k=>predict(DEFAULTS[k]).risk*DEFAULTS[k].imp));
+let reg={}, urgencyNorm={};
+function recomputeRegression(){
+  reg={}; facs.forEach(k=>reg[k]=predict(facData[k]));
+  urgencyNorm={}; facs.forEach(k=>urgencyNorm[k]=clamp(reg[k].risk*facData[k].imp/URG_REF*100,0,100));
+}
+
+function buildFacTable(){
+  const tb=document.getElementById("facBody");
+  tb.innerHTML=facs.map(k=>{
+    const d=facData[k];
+    const inputs=fields.map(([f])=>`<td><input class="num" type="number" data-fac="${k}" data-field="${f}" value="${d[f]}" min="0" ${f==='imp'?'max="5"':''} step="${f==='load'||f==='days'?'5':'1'}"></td>`).join("");
+    return `<tr><td><b>${k}</b><br><small>${facMeta[k].name}</small></td>${inputs}<td><b id="r_${k}"></b></td></tr>`;
+  }).join("");
+  tb.querySelectorAll("input.num").forEach(inp=>{
+    inp.oninput=function(){
+      let v=parseFloat(this.value); if(isNaN(v)) v=0;
+      const f=this.dataset.field;
+      if(f==="imp") v=clamp(Math.round(v),1,5);
+      facData[this.dataset.fac][f]=v;
+      refreshAll();
+    };
+  });
+}
+function renderRegression(){
+  facs.forEach(k=>{const e=document.getElementById("r_"+k); if(e) e.textContent=reg[k].risk.toFixed(1)+"%";});
+  const maxTerm=Math.max(...Object.values(reg).flatMap(r=>r.terms.map(t=>t.v)),0.0001);
+  document.getElementById("regCards").innerHTML=facs.map(k=>{
+    const rows=reg[k].terms.map(t=>`<div class="term"><span class="tn">${t.label}</span>
+      <span class="ttrack"><span class="tfill" style="width:${clamp(t.v/maxTerm*100,0,100)}%"></span></span>
+      <span class="tv">+${t.v.toFixed(1)}</span></div>`).join("");
+    return `<div class="reg-card"><h4><span>${k} ${facMeta[k].name}</span><span class="risk">${reg[k].risk.toFixed(1)}%</span></h4>${rows}</div>`;
+  }).join("");
+  document.getElementById("urgBody").innerHTML=facs.map(k=>{
+    const raw=reg[k].risk*facData[k].imp;
+    return `<tr><td>${k} ${facMeta[k].name}</td><td>${reg[k].risk.toFixed(1)}%</td><td>${facData[k].imp}</td>
+      <td>${raw.toFixed(1)}</td><td><b>${urgencyNorm[k].toFixed(1)}</b></td></tr>`;
+  }).join("");
+}
+
+// ===== 第2段：最適化 =====
+// 指標順：[緊急対応, コスト, 到着, スキル適合]。緊急対応は urgencyNorm×到着/100 で動的算出。
+const metrics=[
+  {name:"緊急対応", color:"var(--m1)"},
+  {name:"コスト",   color:"var(--m2)"},
+  {name:"到着時間", color:"var(--m3)"},
+  {name:"スキル適合", color:"var(--m4)"},
+];
+// pairBase: [到着, コスト, スキル適合, 施設]
+const pairBase={
+  "A|F1":[58,52,95,"F1"], "A|F3":[91,58,68,"F3"],
+  "B|F2":[92,74,90,"F2"],
+  "C|F1":[94,84,78,"F1"], "C|F3":[55,76,94,"F3"],
+};
+function pairVector(key){
+  const [arr,cost,skill,f]=pairBase[key];
+  const urgent=urgencyNorm[f]*arr/100;
+  return [urgent,cost,arr,skill];
+}
+const feas={A:["F1","F3"],B:["F2"],C:["F1","F3"]};
+const crews=["A","B","C"], optFacs=["F1","F2","F3"];
+const crewName={A:"A班(ベテラン)",B:"B班(機動)",C:"C班(若手)"};
+const facName={F1:"F1渋谷(電源)",F2:"F2横浜(無線)",F3:"F3多摩(光)"};
+const presets=[
+  {name:"バランス型",   w:[30,25,25,20]},
+  {name:"緊急対応重視", w:[55,10,25,10]},
+  {name:"コスト重視",   w:[15,55,15,15]},
+  {name:"適材適所重視", w:[15,15,15,55]},
+];
+let weights=[30,25,25,20];
+
+function normW(w){const s=w.reduce((a,b)=>a+b,0)||1; return w.map(x=>x/s);}
+function pairWeighted(key,w){const n=normW(w); return pairVector(key).reduce((a,v,i)=>a+v*n[i],0);}
+function perms(arr){return arr.length<=1?[arr]:arr.flatMap((x,i)=>perms([...arr.slice(0,i),...arr.slice(i+1)]).map(p=>[x,...p]));}
+function allAssignments(){
+  const res=[];
+  for(const p of perms(optFacs)){const a={A:p[0],B:p[1],C:p[2]}; if(crews.every(c=>feas[c].includes(a[c]))) res.push(a);}
+  return res;
+}
+function assignTotal(a,w){return crews.reduce((acc,c)=>acc+pairWeighted(c+"|"+a[c],w),0);}
+function bestAssignment(w){return allAssignments().reduce((b,a)=>assignTotal(a,w)>assignTotal(b,w)?a:b);}
+function assignLabel(a){return a.A==="F1"?"適材適所型（専門家を得意分野へ）":"緊急対応型（近い班を急行）";}
+
+function buildPresets(){
+  const el=document.getElementById("presets");
+  el.innerHTML=presets.map((p,i)=>`<button data-i="${i}">${p.name}<br><small style="opacity:.7">${p.w.join("/")}</small></button>`).join("");
+  el.querySelectorAll("button").forEach(b=>b.onclick=()=>{weights=presets[+b.dataset.i].w.slice(); syncSliders(); refreshOpt(); markPreset();});
+}
+function markPreset(){document.querySelectorAll("#presets button").forEach((b,i)=>b.classList.toggle("active",presets[i].w.join(",")===weights.join(",")));}
+function buildSliders(){
+  const el=document.getElementById("sliders");
+  el.innerHTML=metrics.map((m,i)=>`<div class="slider-card">
+    <div class="lbl"><span><span class="dot" style="background:${m.color}"></span>${m.name}</span><span class="val" id="v${i}">${weights[i]}</span></div>
+    <input type="range" min="0" max="100" value="${weights[i]}" id="rg${i}"></div>`).join("");
+  metrics.forEach((m,i)=>{document.getElementById("rg"+i).oninput=function(){weights[i]=+this.value; refreshOpt(); markPreset();};});
+}
+function syncSliders(){metrics.forEach((m,i)=>{document.getElementById("rg"+i).value=weights[i];});}
+
+function renderPairTable(){
+  const order=["A|F1","A|F3","B|F2","C|F1","C|F3"];
+  document.getElementById("pairTable").innerHTML=order.map(key=>{
+    const v=pairVector(key); const [c,f]=key.split("|");
+    return `<tr><td>${crewName[c].replace(/\(.*\)/,"")} → ${facName[f]}</td>
+      <td>${v[0].toFixed(0)}</td><td>${v[1].toFixed(0)}</td><td>${v[2].toFixed(0)}</td><td>${v[3].toFixed(0)}</td></tr>`;
+  }).join("");
+}
+function renderScoreCards(){
+  const n=normW(weights);
+  const showPairs=["A|F1","C|F1","A|F3","C|F3"];
+  document.getElementById("scoreCards").innerHTML=showPairs.map(key=>{
+    const [c,f]=key.split("|"); const v=pairVector(key); const tot=pairWeighted(key,weights);
+    const bd=metrics.map((m,i)=>`<div class="bd-row"><span class="name"><span class="dot" style="background:${m.color}"></span>${m.name}</span>
+        <span class="bar-track"><span class="bar-fill" style="width:${clamp(v[i],0,100)}%;background:${m.color}"></span></span>
+        <span class="contrib">${(v[i]*n[i]).toFixed(1)}</span></div>`).join("");
+    return `<div class="score-card"><h4>${crewName[c]} → ${f}</h4><div class="route">${facName[f]}</div>
+      <div class="bigscore">${tot.toFixed(1)}</div>${bd}</div>`;
+  }).join("");
+}
+function renderMatrix(){
+  const best=bestAssignment(weights); const m=document.getElementById("matrix");
+  let html=`<div class="mcell mhead">班 ＼ 施設</div>`+optFacs.map(f=>`<div class="mcell mhead">${f}<small>${facName[f].replace(f,"")}</small></div>`).join("");
+  crews.forEach(c=>{
+    html+=`<div class="mcell mhead">${crewName[c]}</div>`;
+    optFacs.forEach(f=>{
+      const key=c+"|"+f;
+      if(feas[c].includes(f)){const win=best[c]===f;
+        html+=`<div class="mcell mok${win?' win':''}"><div>✅ 可${win?' 🏆':''}</div><div class="ms">${pairWeighted(key,weights).toFixed(1)}</div></div>`;
+      }else{html+=`<div class="mcell mng">✗ 不可</div>`;}
+    });
+  });
+  m.innerHTML=html;
+}
+function renderResult(){
+  const best=bestAssignment(weights), tot=assignTotal(best,weights);
+  document.getElementById("bestText").innerHTML=crews.map(c=>`${crewName[c]} → ${facName[best[c]]}：<b>${pairWeighted(c+"|"+best[c],weights).toFixed(1)}</b>`).join("<br>");
+  document.getElementById("bestTotal").textContent="生産性スコア合計 "+tot.toFixed(1);
+  document.getElementById("bestLabel").textContent=assignLabel(best);
+  document.getElementById("bestNote").textContent=best.A==="F1"
+    ? "専門家（A:電源／C:光）を得意分野へ。スキル適合は最大だが、緊急現場への到着はやや遅め。"
+    : "近接拠点のC班を緊急度の高いF1渋谷へ急行。到着が速くダウンタイム削減に効くが、専門性はやや譲る。";
+}
+function renderSens(){
+  const rows=presets.map(p=>{
+    const cur=p.w.join(",")===weights.join(",");
+    const best=bestAssignment(p.w);
+    return `<tr ${cur?'style="background:#dbeafe;font-weight:700;"':''}>
+      <td class="tleft">${p.name}（${p.w.join("/")}）${cur?" ← 現在":""}</td>
+      <td>${crews.map(c=>c+"→"+best[c]).join("、")}<br><small>${assignLabel(best)}</small></td>
+      <td>${assignTotal(best,p.w).toFixed(1)}</td></tr>`;
+  }).join("");
+  let cur="";
+  if(!presets.some(p=>p.w.join(",")===weights.join(","))){
+    const best=bestAssignment(weights);
+    cur=`<tr style="background:#dbeafe;font-weight:700;"><td class="tleft">現在のスライダー設定（${weights.join("/")}）</td>
+      <td>${crews.map(c=>c+"→"+best[c]).join("、")}<br><small>${assignLabel(best)}</small></td>
+      <td>${assignTotal(best,weights).toFixed(1)}</td></tr>`;
+  }
+  document.getElementById("sensBody").innerHTML=cur+rows;
+}
+
+function renderSliderTrack(){
+  metrics.forEach((m,i)=>{
+    document.getElementById("v"+i).textContent=weights[i];
+    const r=document.getElementById("rg"+i);
+    r.style.background=`linear-gradient(90deg,${m.color} 0%,${m.color} ${r.value}%,#475569 ${r.value}%,#475569 100%)`;
+  });
+  document.getElementById("sumPct").textContent=weights.reduce((a,b)=>a+b,0);
+}
+function refreshOpt(){renderSliderTrack(); renderPairTable(); renderScoreCards(); renderMatrix(); renderResult(); renderSens();}
+function refreshAll(){recomputeRegression(); renderRegression(); refreshOpt();}
+
+// ===== 初期化 =====
+buildFacTable();
+buildPresets();
+buildSliders();
+recomputeRegression();
+renderRegression();
+refreshOpt();
+markPreset();
+document.getElementById("resetReg").onclick=function(){
+  facData=JSON.parse(JSON.stringify(DEFAULTS));
+  document.querySelectorAll("#facBody input.num").forEach(inp=>{inp.value=facData[inp.dataset.fac][inp.dataset.field];});
+  refreshAll();
+};
+</script>
+</body>
+</html>
