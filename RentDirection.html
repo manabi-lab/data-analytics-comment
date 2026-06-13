@@ -1,0 +1,630 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>方角を「0・1・2・3」と数値化してはいけない理由</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+    color: #1a1a1a;
+    background: #f7f5f0;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 48px 24px 64px; }
+  h1 { font-size: 28px; font-weight: 600; margin: 0 0 8px; letter-spacing: 0.01em; }
+  .subtitle { color: #6b6b6b; font-size: 14px; margin: 0 0 32px; }
+  h2 { font-size: 20px; font-weight: 600; margin: 40px 0 12px; }
+  p { font-size: 15px; margin: 0 0 12px; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; background: #ede9df; padding: 1px 6px; border-radius: 3px; }
+
+  .hero {
+    background: #fff;
+    border: 1px solid #e5e0d3;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 0 0 16px;
+  }
+  .hero p { margin: 0; }
+  .accent-o { color: #c97a17; font-weight: 600; }
+  .accent-b { color: #1f5fa8; font-weight: 600; }
+  .accent-g { color: #2a8264; font-weight: 600; }
+  .accent-r { color: #a82a2a; font-weight: 600; }
+
+  .card {
+    background: #fff;
+    border: 1px solid #e5e0d3;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 0 0 24px;
+  }
+
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
+  button {
+    font: inherit; font-size: 13px;
+    background: #fff; color: #1a1a1a;
+    border: 1px solid #c9c2b1;
+    border-radius: 999px;
+    padding: 8px 16px; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  }
+  button:hover { background: #f4efe2; border-color: #a89e84; }
+  button:active { transform: scale(0.97); }
+  button.primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  button.primary:hover { background: #333; border-color: #333; }
+  button.active { background: #1f5fa8; color: #fff; border-color: #1f5fa8; }
+
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: #6b6b6b; margin: 0 0 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 18px; height: 3px; border-radius: 2px; display: inline-block; }
+
+  /* SVG animation core */
+  .axis-line { stroke: #c9c2b1; stroke-width: 0.5; }
+  .grid-line { stroke: #e5e0d3; stroke-width: 0.5; stroke-dasharray: 2 3; }
+  .axis-label { font-size: 11px; fill: #6b6b6b; }
+  .axis-cat { font-size: 13px; fill: #1a1a1a; font-weight: 500; }
+
+  .pred-line { fill: none; stroke: #ef9f27; stroke-width: 2.5; stroke-dasharray: 6 4; stroke-linecap: round; }
+  .pred-dot { fill: #ef9f27; stroke: #fff; stroke-width: 1.5; }
+  .actual-line { fill: none; stroke: #1f5fa8; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .actual-dot { fill: #1f5fa8; stroke: #fff; stroke-width: 1.5; }
+  .value-label { font-size: 11px; font-weight: 500; fill: #1f5fa8; }
+  .pred-label { font-size: 11px; fill: #b8780f; font-weight: 500; }
+  .diff-label-pill { font-size: 11px; font-weight: 500; }
+
+  .fade-in { opacity: 0; animation: fadeIn 0.5s forwards; }
+  @keyframes fadeIn { to { opacity: 1; } }
+  .pop { transform-origin: center; transform-box: fill-box; }
+  .pop.show { animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+  @keyframes pop { 0% { opacity: 0; transform: scale(0); } 100% { opacity: 1; transform: scale(1); } }
+
+  .draw { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); }
+  .draw.go { animation: draw var(--dur, 1.2s) ease-out forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+
+  .label-hidden { opacity: 0; }
+  .label-show { animation: fadeIn 0.4s forwards; }
+
+  /* Step-by-step section */
+  .step-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0 0; }
+  .stat-box { background: #f4efe2; border-radius: 8px; padding: 12px 14px; }
+  .stat-label { font-size: 12px; color: #6b6b6b; margin: 0 0 4px; }
+  .stat-value { font-size: 18px; font-weight: 600; margin: 0; }
+  .stat-sub { font-size: 11px; margin: 4px 0 0; font-weight: 500; }
+
+  .compare-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0 0; }
+  .compare-box { background: #f4efe2; border-radius: 8px; padding: 10px 12px; transition: transform 0.3s, background 0.3s; }
+  .compare-box.flash { background: #fff5d6; transform: translateY(-2px); }
+
+  /* Dummy variable transformation */
+  .dummy-stage { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; margin: 16px 0; }
+  .dummy-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .dummy-table th, .dummy-table td { padding: 6px 8px; border-bottom: 0.5px solid #e5e0d3; }
+  .dummy-table th { background: #f4efe2; font-weight: 500; text-align: center; }
+  .dummy-table td:first-child { text-align: left; }
+  .dummy-table td:not(:first-child) { text-align: center; }
+  .arrow-anim { font-size: 24px; color: #c9c2b1; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.5; transform: translateX(0); } 50% { opacity: 1; transform: translateX(4px); } }
+
+  .reasons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0 0; }
+  .reason {
+    background: #fbeded; border-radius: 8px; padding: 14px;
+    border-left: 3px solid #c93838;
+    border-top-left-radius: 0; border-bottom-left-radius: 0;
+    opacity: 0; transform: translateY(8px);
+    transition: opacity 0.5s, transform 0.5s;
+  }
+  .reason.show { opacity: 1; transform: translateY(0); }
+  .reason h3 { font-size: 14px; font-weight: 600; color: #a82a2a; margin: 0 0 4px; }
+  .reason p { font-size: 12px; color: #6e1f1f; margin: 0; line-height: 1.55; }
+
+  .takeaway {
+    background: #ede9df; border-radius: 12px; padding: 18px 22px; margin: 32px 0 16px;
+  }
+  .takeaway h2 { margin: 0 0 8px; font-size: 16px; }
+  .takeaway ul { margin: 0; padding-left: 1.2rem; font-size: 14px; }
+  .takeaway li { margin: 4px 0; }
+
+  .foot { text-align: right; font-size: 12px; color: #9a9282; margin-top: 32px; }
+
+  @media (max-width: 640px) {
+    .step-grid, .compare-grid { grid-template-columns: repeat(2, 1fr); }
+    .reasons { grid-template-columns: 1fr; }
+    .dummy-stage { grid-template-columns: 1fr; }
+    .arrow-anim { transform: rotate(90deg); text-align: center; }
+    h1 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>方角を「0・1・2・3」と数値化してはいけない理由</h1>
+  <p class="subtitle">賃貸物件データ100件の平均家賃で読み解く｜回帰式 Y = aX + b の落とし穴</p>
+
+  <div class="hero">
+    <p>回帰式 <code>Y = aX + b</code> に方角番号（北=0 / 西=1 / 東=2 / 南=3）を入れると<br>
+    <span style="font-size: 17px;">家賃 = <strong>3,308 × X + 92,568</strong></span><br>
+    <span style="color: #6b6b6b; font-size: 13px;">X が1進むごとに家賃は必ず +3,308円ずつ動く、と決めつけている数式です。</span></p>
+  </div>
+
+  <h2>① 数式の予測（等間隔の階段）と実際（山型）</h2>
+  <p>「再生」を押すと、まず<span class="accent-o">オレンジの予測線</span>が等間隔に描かれ、次に<span class="accent-b">青い実際の家賃</span>が現れます。最後に各セグメントの差がポップアップします。</p>
+
+  <div class="controls">
+    <button id="play1" class="primary">▶ アニメーションを再生</button>
+    <button id="reset1">↺ もう一度</button>
+  </div>
+
+  <div class="card">
+    <div class="legend">
+      <span><span class="swatch" style="background: #ef9f27;"></span>数式の予測（+3,308円ずつ等間隔）</span>
+      <span><span class="swatch" style="background: #1f5fa8;"></span>実際の平均家賃</span>
+    </div>
+    <svg id="chart1" viewBox="0 0 760 380" width="100%" style="display: block;">
+      <!-- axes -->
+      <line class="axis-line" x1="70" y1="340" x2="730" y2="340"/>
+      <line class="axis-line" x1="70" y1="40" x2="70" y2="340"/>
+
+      <!-- grid + y labels -->
+      <line class="grid-line" x1="70" y1="60" x2="730" y2="60"/>
+      <text class="axis-label" x="65" y="64" text-anchor="end">110k</text>
+      <line class="grid-line" x1="70" y1="116" x2="730" y2="116"/>
+      <text class="axis-label" x="65" y="120" text-anchor="end">105k</text>
+      <line class="grid-line" x1="70" y1="172" x2="730" y2="172"/>
+      <text class="axis-label" x="65" y="176" text-anchor="end">100k</text>
+      <line class="grid-line" x1="70" y1="228" x2="730" y2="228"/>
+      <text class="axis-label" x="65" y="232" text-anchor="end">95k</text>
+      <line class="grid-line" x1="70" y1="284" x2="730" y2="284"/>
+      <text class="axis-label" x="65" y="288" text-anchor="end">90k</text>
+
+      <!-- x labels -->
+      <text class="axis-cat" x="140" y="362" text-anchor="middle">北 (X=0)</text>
+      <text class="axis-cat" x="320" y="362" text-anchor="middle">西 (X=1)</text>
+      <text class="axis-cat" x="500" y="362" text-anchor="middle">東 (X=2)</text>
+      <text class="axis-cat" x="680" y="362" text-anchor="middle">南 (X=3)</text>
+
+      <!-- Prediction line (orange) — drawn first
+           92568 -> y=255.6, 95876 -> y=218.6, 99184 -> y=181.5, 102492 -> y=144.4 -->
+      <polyline id="predLine" class="pred-line draw" style="--len: 750; --dur: 1.2s;"
+        points="140,256 320,219 500,181 680,144"/>
+
+      <!-- Prediction dots -->
+      <g id="predDots">
+        <circle class="pred-dot pop" cx="140" cy="256" r="5"/>
+        <circle class="pred-dot pop" cx="320" cy="219" r="5"/>
+        <circle class="pred-dot pop" cx="500" cy="181" r="5"/>
+        <circle class="pred-dot pop" cx="680" cy="144" r="5"/>
+      </g>
+
+      <!-- Prediction +a labels -->
+      <g id="predLabels">
+        <text class="pred-label label-hidden" x="230" y="248" text-anchor="middle">+3,308</text>
+        <text class="pred-label label-hidden" x="410" y="211" text-anchor="middle">+3,308</text>
+        <text class="pred-label label-hidden" x="590" y="174" text-anchor="middle">+3,308</text>
+      </g>
+
+      <!-- Actual line (blue)
+           97062 -> y=210.5, 92932 -> y=256.8, 91589 -> y=271.8, 108535 -> y=82.0 -->
+      <polyline id="actualLine" class="actual-line draw" style="--len: 900; --dur: 1.5s;"
+        points="140,211 320,257 500,272 680,82"/>
+
+      <!-- Actual dots -->
+      <g id="actualDots">
+        <circle class="actual-dot pop" cx="140" cy="211" r="6"/>
+        <circle class="actual-dot pop" cx="320" cy="257" r="6"/>
+        <circle class="actual-dot pop" cx="500" cy="272" r="6"/>
+        <circle class="actual-dot pop" cx="680" cy="82" r="6"/>
+      </g>
+
+      <!-- Actual value labels -->
+      <g id="actualValues">
+        <text class="value-label label-hidden" x="140" y="199" text-anchor="middle">97,062</text>
+        <text class="value-label label-hidden" x="320" y="245" text-anchor="end">92,932</text>
+        <text class="value-label label-hidden" x="500" y="260" text-anchor="end">91,589</text>
+        <text class="value-label label-hidden" x="680" y="70" text-anchor="middle">108,535</text>
+      </g>
+
+      <!-- Diff pills (between actual points) -->
+      <g id="diffPills">
+        <g class="label-hidden" data-diff="0">
+          <rect x="200" y="290" width="60" height="22" rx="11" fill="#fbeded" stroke="#e58a8a" stroke-width="0.5"/>
+          <text class="diff-label-pill" x="230" y="305" text-anchor="middle" fill="#a82a2a">−4,131</text>
+        </g>
+        <g class="label-hidden" data-diff="1">
+          <rect x="380" y="298" width="60" height="22" rx="11" fill="#fbeded" stroke="#e58a8a" stroke-width="0.5"/>
+          <text class="diff-label-pill" x="410" y="313" text-anchor="middle" fill="#a82a2a">−1,343</text>
+        </g>
+        <g class="label-hidden" data-diff="2">
+          <rect x="560" y="170" width="68" height="22" rx="11" fill="#e6f1de" stroke="#9ec47c" stroke-width="0.5"/>
+          <text class="diff-label-pill" x="594" y="185" text-anchor="middle" fill="#2a8264">+16,946</text>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <div style="background: #fbf3e0; border-radius: 8px; padding: 14px 18px; margin: 0 0 24px;">
+    <p style="margin: 0; font-size: 14px; color: #7a4f0e;"><strong>読み方：</strong>オレンジの点線（予測）は <code>+3,308円</code> ずつ等間隔で上がっています。一方、青い実線（実際）は北→西→東で<span class="accent-r">下がり続け</span>、東→南で <span class="accent-g">+16,946円</span> 跳ね上がる山型。「方角が1つ進むたびに同じ a 円ずつ動く」という前提が完全に崩れています。</p>
+  </div>
+
+  <h2>② 一つ前の方角からの差──ステップで確認</h2>
+  <p>各方角ボタンを押すと、「一つ前との差（実際）」と「数式の予測差（+a）」が並びます。実際の差は<span class="accent-r">毎回バラバラ</span>、予測は<span class="accent-o">毎回同じ +3,308</span>。</p>
+
+  <div class="controls">
+    <button class="step-btn active" data-step="0">北（基準）</button>
+    <button class="step-btn" data-step="1">北 → 西</button>
+    <button class="step-btn" data-step="2">西 → 東</button>
+    <button class="step-btn" data-step="3">東 → 南</button>
+    <button id="autoplay">▶ 自動で順送り</button>
+  </div>
+
+  <div class="step-grid">
+    <div class="stat-box"><p class="stat-label">前の方角の平均</p><p class="stat-value" id="prevVal">―</p></div>
+    <div class="stat-box"><p class="stat-label">この方角の平均</p><p class="stat-value" id="currVal">97,062 円</p></div>
+    <div class="stat-box"><p class="stat-label">実際の差</p><p class="stat-value" id="diffActual">―</p></div>
+    <div class="stat-box"><p class="stat-label">数式の予測差（+a）</p><p class="stat-value" id="diffPred">―</p></div>
+  </div>
+
+  <h2>③ 予測と実際のズレ</h2>
+  <p>直線を当てはめた結果、<span class="accent-r">東の割安さ</span>も<span class="accent-r">南の人気</span>も平らにならされて消えてしまいます。</p>
+
+  <div class="compare-grid">
+    <div class="compare-box" data-dir="北">
+      <p class="stat-label">北</p>
+      <p class="stat-value">実 97,062</p>
+      <p class="stat-sub" style="color: #b8780f;">予 92,568</p>
+      <p class="stat-sub" style="color: #2a8264;">+4,494 高め</p>
+    </div>
+    <div class="compare-box" data-dir="西">
+      <p class="stat-label">西</p>
+      <p class="stat-value">実 92,932</p>
+      <p class="stat-sub" style="color: #b8780f;">予 95,876</p>
+      <p class="stat-sub" style="color: #a82a2a;">−2,944 低め</p>
+    </div>
+    <div class="compare-box" data-dir="東">
+      <p class="stat-label">東</p>
+      <p class="stat-value">実 91,589</p>
+      <p class="stat-sub" style="color: #b8780f;">予 99,184</p>
+      <p class="stat-sub" style="color: #a82a2a;">−7,595 低め</p>
+    </div>
+    <div class="compare-box" data-dir="南">
+      <p class="stat-label">南</p>
+      <p class="stat-value">実 108,535</p>
+      <p class="stat-sub" style="color: #b8780f;">予 102,492</p>
+      <p class="stat-sub" style="color: #2a8264;">+6,043 高め</p>
+    </div>
+  </div>
+
+  <h2>④ なぜこうなるのか──番号には「順序」と「等間隔」がついてくる</h2>
+  <p>番号 0・1・2・3 には、数である以上、勝手についてくる性質があります。下のカードは順番に現れます。</p>
+
+  <div class="controls">
+    <button id="revealReasons" class="primary">▶ 理由を順に見る</button>
+  </div>
+
+  <div class="reasons">
+    <div class="reason" data-idx="0">
+      <h3>① 順序がついてしまう</h3>
+      <p>3(南)は0(北)より「大きい」ことになる。しかし方角に大小はありません。</p>
+    </div>
+    <div class="reason" data-idx="1">
+      <h3>② 等間隔と仮定される</h3>
+      <p>0-1、1-2、2-3 の差はどれも「1」。だから家賃も同じ歩幅 a で動くと計算されます。</p>
+    </div>
+    <div class="reason" data-idx="2">
+      <h3>③ 振り方で結論が変わる</h3>
+      <p>番号の振り方を変えるだけで a の符号も大きさも変わる。再現性がありません。</p>
+    </div>
+  </div>
+
+  <h2>⑤ 正しい方法──ダミー変数で「別々の値」にする</h2>
+  <p>方角を1本の番号軸にまとめず、方角ごとに「はい(1)／いいえ(0)」の列を作ります。「変換する」を押すと、左の番号データが右のダミー変数に変わります。</p>
+
+  <div class="controls">
+    <button id="transformBtn" class="primary">▶ ダミー変数に変換</button>
+    <button id="resetTransform">↺ 元に戻す</button>
+  </div>
+
+  <div class="dummy-stage">
+    <div>
+      <p style="font-size: 12px; color: #6b6b6b; margin: 0 0 6px; text-align: center;">番号化（NG）</p>
+      <table class="dummy-table">
+        <thead><tr><th style="text-align: left;">方角</th><th>X</th></tr></thead>
+        <tbody>
+          <tr><td>北</td><td>0</td></tr>
+          <tr><td>西</td><td>1</td></tr>
+          <tr><td>東</td><td>2</td></tr>
+          <tr><td>南</td><td>3</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="arrow-anim">→</div>
+    <div>
+      <p style="font-size: 12px; color: #6b6b6b; margin: 0 0 6px; text-align: center;">ダミー変数（OK）</p>
+      <table class="dummy-table" id="dummyTable">
+        <thead><tr><th style="text-align: left;">方角</th><th>西か?</th><th>東か?</th><th>南か?</th></tr></thead>
+        <tbody>
+          <tr><td>北（基準）</td><td class="dcell" data-target="0">―</td><td class="dcell" data-target="0">―</td><td class="dcell" data-target="0">―</td></tr>
+          <tr><td>西</td><td class="dcell hot" data-target="1">―</td><td class="dcell" data-target="0">―</td><td class="dcell" data-target="0">―</td></tr>
+          <tr><td>東</td><td class="dcell" data-target="0">―</td><td class="dcell hot" data-target="1">―</td><td class="dcell" data-target="0">―</td></tr>
+          <tr><td>南</td><td class="dcell" data-target="0">―</td><td class="dcell" data-target="0">―</td><td class="dcell hot" data-target="1">―</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p style="font-size: 13px; color: #6b6b6b; margin: 0 0 24px;">数式は <code>Y = a₁×(西か) + a₂×(東か) + a₃×(南か) + b</code> の形になり、各係数を独立に推定できます。「a の倍数」という縛りがなくなり、山型の関係をそのまま捉えられます。</p>
+
+  <h2>⑥ ダミー変数の結果──北を基準とした差</h2>
+  <p>「アニメーション再生」を押すと、各方角のバーが0からスタートして実際の値まで伸びます。<span class="accent-r">西と東は北より低く</span>、<span class="accent-g">南だけ飛び抜けて高い</span>──山型がそのまま数値になります。</p>
+
+  <div class="controls">
+    <button id="play2" class="primary">▶ バーを伸ばす</button>
+    <button id="reset2">↺ もう一度</button>
+  </div>
+
+  <div class="card">
+    <svg id="chart2" viewBox="0 0 760 260" width="100%" style="display: block;">
+      <line class="axis-line" x1="70" y1="130" x2="730" y2="130"/>
+      <text class="axis-label" x="65" y="50" text-anchor="end">+12k</text>
+      <text class="axis-label" x="65" y="90" text-anchor="end">+6k</text>
+      <text class="axis-label" x="65" y="134" text-anchor="end">0 (北基準)</text>
+      <text class="axis-label" x="65" y="174" text-anchor="end">−6k</text>
+      <text class="axis-label" x="65" y="214" text-anchor="end">−12k</text>
+
+      <line class="grid-line" x1="70" y1="46" x2="730" y2="46"/>
+      <line class="grid-line" x1="70" y1="86" x2="730" y2="86"/>
+      <line class="grid-line" x1="70" y1="170" x2="730" y2="170"/>
+      <line class="grid-line" x1="70" y1="210" x2="730" y2="210"/>
+
+      <!-- 基準（北）-->
+      <rect x="130" y="124" width="100" height="12" fill="#c9c2b1" rx="2"/>
+      <text class="axis-cat" x="180" y="240" text-anchor="middle">北</text>
+      <text x="180" y="118" text-anchor="middle" font-size="11" fill="#6b6b6b">基準</text>
+
+      <!-- bar wrappers; bars themselves start at height 0 -->
+      <g id="barWest">
+        <rect class="bar" x="280" y="130" width="100" height="0" fill="#ef9f7b" rx="2"/>
+        <text x="330" y="240" text-anchor="middle" class="axis-cat">西</text>
+        <text class="bar-label" x="330" y="0" text-anchor="middle" font-size="13" font-weight="500" fill="#a82a2a" opacity="0">−4,131</text>
+      </g>
+      <g id="barEast">
+        <rect class="bar" x="430" y="130" width="100" height="0" fill="#ef9f7b" rx="2"/>
+        <text x="480" y="240" text-anchor="middle" class="axis-cat">東</text>
+        <text class="bar-label" x="480" y="0" text-anchor="middle" font-size="13" font-weight="500" fill="#a82a2a" opacity="0">−5,473</text>
+      </g>
+      <g id="barSouth">
+        <rect class="bar" x="580" y="130" width="100" height="0" fill="#5dcaa5" rx="2"/>
+        <text x="630" y="240" text-anchor="middle" class="axis-cat">南</text>
+        <text class="bar-label" x="630" y="0" text-anchor="middle" font-size="13" font-weight="500" fill="#2a8264" opacity="0">+11,473</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="takeaway">
+    <h2>持ち帰りメッセージ</h2>
+    <ul>
+      <li><strong>数式に入れると無理が見える。</strong> Y=aX+b は「X が1増えるごとに必ず +a」と決めつける。</li>
+      <li><strong>実際の増減はバラバラ。</strong> 北→西 −4,131円、西→東 −1,343円、東→南 +16,946円。</li>
+      <li><strong>番号次第で結論が変わる。</strong> 振り方を変えれば a の符号も変わり、再現性がない。</li>
+      <li><strong>正解はダミー変数。</strong> 方角ごとに 0/1 の列を作れば、各方角の効果を別々に・正しく推定できる。</li>
+      <li><strong>順序のない項目は全部同じ。</strong> バス・トイレ別／一緒、ペット可／不可なども同じ考え方。</li>
+    </ul>
+  </div>
+
+  <p class="foot">学びラボ（Manabi-Lab）</p>
+</div>
+
+<script>
+// ===== Chart 1 animation =====
+(function() {
+  const predLine = document.getElementById('predLine');
+  const predDots = document.querySelectorAll('#predDots .pred-dot');
+  const predLabels = document.querySelectorAll('#predLabels text');
+  const actualLine = document.getElementById('actualLine');
+  const actualDots = document.querySelectorAll('#actualDots .actual-dot');
+  const actualValues = document.querySelectorAll('#actualValues text');
+  const diffPills = document.querySelectorAll('#diffPills g');
+
+  function reset1() {
+    predLine.classList.remove('go');
+    actualLine.classList.remove('go');
+    predDots.forEach(d => d.classList.remove('show'));
+    actualDots.forEach(d => d.classList.remove('show'));
+    predLabels.forEach(l => { l.classList.remove('label-show'); l.classList.add('label-hidden'); });
+    actualValues.forEach(l => { l.classList.remove('label-show'); l.classList.add('label-hidden'); });
+    diffPills.forEach(p => { p.classList.remove('label-show'); p.classList.add('label-hidden'); });
+    void predLine.offsetWidth;
+    void actualLine.offsetWidth;
+  }
+
+  function play1() {
+    reset1();
+    setTimeout(() => predLine.classList.add('go'), 50);
+    predDots.forEach((d, i) => setTimeout(() => d.classList.add('show'), 100 + i * 250));
+    predLabels.forEach((l, i) => setTimeout(() => { l.classList.remove('label-hidden'); l.classList.add('label-show'); }, 600 + i * 200));
+    setTimeout(() => actualLine.classList.add('go'), 1500);
+    actualDots.forEach((d, i) => setTimeout(() => d.classList.add('show'), 1700 + i * 280));
+    actualValues.forEach((l, i) => setTimeout(() => { l.classList.remove('label-hidden'); l.classList.add('label-show'); }, 2000 + i * 250));
+    diffPills.forEach((p, i) => setTimeout(() => { p.classList.remove('label-hidden'); p.classList.add('label-show'); }, 3200 + i * 350));
+  }
+
+  document.getElementById('play1').addEventListener('click', play1);
+  document.getElementById('reset1').addEventListener('click', reset1);
+  // Autoplay on load
+  setTimeout(play1, 300);
+})();
+
+// ===== Step section =====
+(function() {
+  const stepData = [
+    { curr: 97062, prev: null, predDiff: null, dir: '北' },
+    { curr: 92932, prev: 97062, predDiff: 3308, dir: '西' },
+    { curr: 91589, prev: 92932, predDiff: 3308, dir: '東' },
+    { curr: 108535, prev: 91589, predDiff: 3308, dir: '南' }
+  ];
+
+  const fmt = n => (n >= 0 ? '+' : '') + Math.round(n).toLocaleString() + ' 円';
+  const fmtRaw = n => Math.round(n).toLocaleString() + ' 円';
+
+  const buttons = document.querySelectorAll('.step-btn');
+  const compareBoxes = document.querySelectorAll('.compare-box');
+
+  function selectStep(i) {
+    const d = stepData[i];
+    const cv = document.getElementById('currVal');
+    const pv = document.getElementById('prevVal');
+    const da = document.getElementById('diffActual');
+    const dp = document.getElementById('diffPred');
+
+    cv.style.transition = 'opacity 0.2s';
+    cv.style.opacity = '0';
+    setTimeout(() => {
+      cv.textContent = fmtRaw(d.curr);
+      cv.style.opacity = '1';
+    }, 200);
+
+    pv.textContent = d.prev === null ? '―' : fmtRaw(d.prev);
+
+    if (d.prev === null) {
+      da.textContent = '―'; da.style.color = '#1a1a1a';
+      dp.textContent = '―'; dp.style.color = '#1a1a1a';
+    } else {
+      const diff = d.curr - d.prev;
+      da.textContent = fmt(diff);
+      da.style.color = diff >= 0 ? '#2a8264' : '#a82a2a';
+      dp.textContent = '+' + d.predDiff.toLocaleString() + ' 円';
+      dp.style.color = '#b8780f';
+    }
+
+    buttons.forEach((b, j) => b.classList.toggle('active', j === i));
+    compareBoxes.forEach(b => b.classList.remove('flash'));
+    const target = Array.from(compareBoxes).find(b => b.dataset.dir === d.dir);
+    if (target) target.classList.add('flash');
+  }
+
+  buttons.forEach((b, i) => b.addEventListener('click', () => selectStep(i)));
+
+  document.getElementById('autoplay').addEventListener('click', () => {
+    let i = 0;
+    selectStep(0);
+    const iv = setInterval(() => {
+      i++;
+      if (i > 3) { clearInterval(iv); return; }
+      selectStep(i);
+    }, 1200);
+  });
+
+  selectStep(0);
+})();
+
+// ===== Reasons reveal =====
+(function() {
+  const reasons = document.querySelectorAll('.reason');
+  document.getElementById('revealReasons').addEventListener('click', () => {
+    reasons.forEach(r => r.classList.remove('show'));
+    reasons.forEach((r, i) => setTimeout(() => r.classList.add('show'), 100 + i * 350));
+  });
+})();
+
+// ===== Dummy variable transform =====
+(function() {
+  const cells = document.querySelectorAll('.dcell');
+  function transform() {
+    cells.forEach((c, i) => {
+      setTimeout(() => {
+        c.style.transition = 'background 0.3s, transform 0.3s, color 0.3s';
+        c.style.transform = 'scale(1.2)';
+        c.textContent = c.dataset.target;
+        if (c.classList.contains('hot')) {
+          c.style.background = '#1f5fa8';
+          c.style.color = '#fff';
+          c.style.fontWeight = '600';
+        } else {
+          c.style.color = '#c9c2b1';
+        }
+        setTimeout(() => { c.style.transform = 'scale(1)'; }, 200);
+      }, i * 60);
+    });
+  }
+  function resetT() {
+    cells.forEach(c => {
+      c.textContent = '―';
+      c.style.background = '';
+      c.style.color = '';
+      c.style.fontWeight = '';
+      c.style.transform = '';
+    });
+  }
+  document.getElementById('transformBtn').addEventListener('click', transform);
+  document.getElementById('resetTransform').addEventListener('click', resetT);
+})();
+
+// ===== Chart 2 animation =====
+(function() {
+  // y = 130 - (value / 12000) * 80 ; bar height = abs((value / 12000) * 80)
+  // West: -4131 → bar grows downward
+  // East: -5473 → bar grows downward
+  // South: +11473 → bar grows upward
+  const bars = [
+    { rect: document.querySelector('#barWest .bar'), label: document.querySelector('#barWest .bar-label'), value: -4131 },
+    { rect: document.querySelector('#barEast .bar'), label: document.querySelector('#barEast .bar-label'), value: -5473 },
+    { rect: document.querySelector('#barSouth .bar'), label: document.querySelector('#barSouth .bar-label'), value: 11473 }
+  ];
+  const baseY = 130;
+  const scale = 80 / 6000; // 6k per 80px
+
+  function animateBar(bar, delay) {
+    setTimeout(() => {
+      const targetH = Math.abs(bar.value) * scale;
+      const isPositive = bar.value > 0;
+      const targetY = isPositive ? (baseY - targetH) : baseY;
+      const labelY = isPositive ? (targetY - 8) : (baseY + targetH + 18);
+      const duration = 800;
+      const start = performance.now();
+      const initialY = parseFloat(bar.rect.getAttribute('y'));
+      function tick(now) {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const h = targetH * eased;
+        const y = isPositive ? (baseY - h) : baseY;
+        bar.rect.setAttribute('y', y);
+        bar.rect.setAttribute('height', h);
+        if (t < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          bar.label.setAttribute('y', labelY);
+          bar.label.style.transition = 'opacity 0.3s';
+          bar.label.style.opacity = '1';
+        }
+      }
+      requestAnimationFrame(tick);
+    }, delay);
+  }
+
+  function play2() {
+    bars.forEach(b => {
+      b.rect.setAttribute('y', baseY);
+      b.rect.setAttribute('height', 0);
+      b.label.style.opacity = '0';
+    });
+    bars.forEach((b, i) => animateBar(b, 200 + i * 400));
+  }
+  function reset2() {
+    bars.forEach(b => {
+      b.rect.setAttribute('y', baseY);
+      b.rect.setAttribute('height', 0);
+      b.label.style.opacity = '0';
+    });
+  }
+
+  document.getElementById('play2').addEventListener('click', play2);
+  document.getElementById('reset2').addEventListener('click', reset2);
+})();
+</script>
+</body>
+</html>
