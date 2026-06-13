@@ -1,0 +1,942 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>実務で使える分析手法 10選（2026年版）</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+    color: #1a1a1a;
+    background: #f7f5f0;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 48px 24px 64px; }
+  h1 { font-size: 30px; font-weight: 600; margin: 0 0 8px; letter-spacing: 0.01em; }
+  .subtitle { color: #6b6b6b; font-size: 14px; margin: 0 0 32px; }
+  h2 { font-size: 20px; font-weight: 600; margin: 48px 0 12px; }
+  h3 { font-size: 16px; font-weight: 600; margin: 0 0 6px; }
+  p { font-size: 15px; margin: 0 0 12px; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; background: #ede9df; padding: 1px 6px; border-radius: 3px; }
+
+  .hero {
+    background: #fff;
+    border: 1px solid #e5e0d3;
+    border-radius: 12px;
+    padding: 22px 26px;
+    margin: 0 0 24px;
+  }
+  .hero p { margin: 0; font-size: 15px; }
+
+  /* Filter tabs */
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+  .tab {
+    font: inherit; font-size: 13px;
+    background: #fff; color: #1a1a1a;
+    border: 1px solid #c9c2b1;
+    border-radius: 999px;
+    padding: 8px 18px; cursor: pointer;
+    transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.1s;
+  }
+  .tab:hover { background: #f4efe2; border-color: #a89e84; }
+  .tab:active { transform: scale(0.97); }
+  .tab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .tab .count { color: #9a9282; font-size: 11px; margin-left: 4px; }
+  .tab.active .count { color: #c9c2b1; }
+
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 24px; }
+  .tools button {
+    font: inherit; font-size: 12px;
+    background: #fff; color: #4a4a4a;
+    border: 1px solid #c9c2b1;
+    border-radius: 999px;
+    padding: 5px 14px; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .tools button:hover { background: #f4efe2; }
+
+  /* Method grid */
+  .grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  .method {
+    background: #fff;
+    border: 1px solid #e5e0d3;
+    border-radius: 12px;
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    gap: 16px;
+    align-items: start;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.4s ease, transform 0.4s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .method.visible { opacity: 1; transform: translateY(0); }
+  .method.hidden { display: none; }
+  .method:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.06); border-color: #c9c2b1; }
+  .method .num {
+    font-size: 32px; font-weight: 600; color: #c9c2b1; letter-spacing: -0.02em;
+    line-height: 1; padding-top: 2px;
+  }
+  .method .body { min-width: 0; }
+  .method .body h3 { margin: 0 0 4px; }
+  .method .english { font-size: 12px; color: #9a9282; font-weight: 400; margin-left: 6px; }
+  .method .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 10px; }
+  .badge {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 500;
+  }
+  .badge-value { background: #e3edf8; color: #1f5fa8; }
+  .badge-class { background: #dcebe1; color: #2a8264; }
+  .badge-rank { background: #ebe1f0; color: #6f4ba0; }
+  .badge-opt { background: #faecd9; color: #b8780f; }
+  .badge-explore { background: #e8e6df; color: #6b6b6b; }
+
+  .one-liner { font-size: 14px; font-weight: 500; margin: 0 0 10px; }
+  .io {
+    font-size: 12px; color: #6b6b6b; margin: 0 0 10px;
+    font-family: ui-monospace, Menlo, monospace;
+    background: #f4efe2; padding: 6px 10px; border-radius: 4px;
+    display: inline-block;
+  }
+  .examples { margin: 0 0 10px; }
+  .examples-label { font-size: 12px; color: #6b6b6b; margin-bottom: 4px; }
+  .examples ul { margin: 0; padding-left: 1.1rem; font-size: 13px; line-height: 1.6; }
+  .why { font-size: 13px; color: #4a4a4a; line-height: 1.7; border-top: 0.5px solid #e5e0d3; padding-top: 10px; margin-top: 10px;}
+  .why strong { color: #1a1a1a; font-weight: 600; }
+
+  .method .meta {
+    text-align: right;
+    font-size: 11px;
+    color: #9a9282;
+    min-width: 90px;
+  }
+  .stars { font-size: 14px; letter-spacing: 1px; color: #c97a17; margin-bottom: 4px; }
+  .meta-label { display: block; }
+
+  /* Collapsible example */
+  details.example {
+    margin-top: 12px;
+    border-top: 0.5px solid #e5e0d3;
+    padding-top: 10px;
+  }
+  details.example summary {
+    cursor: pointer;
+    font-size: 13px;
+    color: #1f5fa8;
+    list-style: none;
+    padding: 6px 12px;
+    user-select: none;
+    background: #f4f7fc;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    transition: background 0.15s;
+    font-weight: 500;
+  }
+  details.example summary:hover { background: #e7eef8; }
+  details.example summary::-webkit-details-marker { display: none; }
+  details.example summary::before {
+    content: '▶';
+    display: inline-block;
+    margin-right: 8px;
+    transition: transform 0.25s;
+    font-size: 9px;
+    color: #1f5fa8;
+  }
+  details.example[open] summary::before { transform: rotate(90deg); }
+  details.example[open] summary { background: #e7eef8; }
+
+  .ex-body {
+    padding: 14px 0 4px;
+    animation: slideDown 0.35s ease;
+  }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .ex-vars { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; }
+  .ex-var-row { display: flex; align-items: flex-start; gap: 10px; }
+  .ex-var-label {
+    background: #e3edf8;
+    color: #1f5fa8;
+    font-size: 11px;
+    padding: 3px 12px;
+    border-radius: 4px;
+    font-weight: 500;
+    white-space: nowrap;
+    min-width: 70px;
+    text-align: center;
+  }
+  .ex-var-text { font-size: 13px; flex: 1; line-height: 1.6; }
+
+  .ex-table-wrap { overflow-x: auto; margin: 4px 0 14px; border-radius: 6px; border: 0.5px solid #e5e0d3; }
+  .ex-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 360px; }
+  .ex-table th, .ex-table td {
+    padding: 8px 12px;
+    border-bottom: 0.5px solid #e5e0d3;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .ex-table th {
+    background: #ede9df;
+    font-weight: 500;
+    color: #4a4a4a;
+  }
+  .ex-table tbody tr:last-child td { border-bottom: none; }
+  .ex-table tbody tr:hover { background: #faf8f2; }
+
+  .ex-outcome {
+    background: #fbf3e0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 4px;
+  }
+  .ex-outcome-label {
+    font-size: 11px;
+    background: #c97a17;
+    color: #fff;
+    padding: 3px 12px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  .ex-outcome p {
+    font-size: 13px;
+    margin: 0;
+    line-height: 1.75;
+    color: #4a2c0a;
+  }
+
+  /* Removed methods */
+  .removed {
+    background: #fff;
+    border: 1px solid #e5e0d3;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 16px 0 0;
+  }
+  .removed table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .removed th, .removed td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 0.5px solid #e5e0d3;
+    vertical-align: top;
+  }
+  .removed th { color: #6b6b6b; font-weight: 500; background: #f4efe2; }
+  .removed .strike {
+    text-decoration: line-through;
+    text-decoration-color: transparent;
+    color: #1a1a1a;
+    font-weight: 500;
+    transition: text-decoration-color 0.6s ease, color 0.6s ease;
+  }
+  .removed .strike.go {
+    text-decoration-color: #a82a2a;
+    color: #6b6b6b;
+  }
+  .removed .replace { color: #2a8264; font-weight: 500; }
+
+  /* Appendix */
+  .appendix-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .appendix-card {
+    background: #fff;
+    border: 1px solid #e5e0d3;
+    border-radius: 12px;
+    padding: 18px 22px;
+  }
+  .appendix-card h3 { margin: 0 0 6px; }
+  .appendix-card p { font-size: 13px; line-height: 1.7; margin: 0; }
+  .appendix-card .tag {
+    display: inline-block;
+    font-size: 11px;
+    background: #ede9df;
+    color: #6b6b6b;
+    padding: 2px 10px;
+    border-radius: 999px;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  .shap-demo { margin: 12px 0 0; }
+  .shap-row { display: flex; align-items: center; gap: 10px; font-size: 12px; margin-bottom: 4px; }
+  .shap-label { width: 80px; color: #4a4a4a; }
+  .shap-bar { flex: 1; height: 14px; background: #f4efe2; border-radius: 2px; position: relative; overflow: hidden; }
+  .shap-fill { height: 100%; background: #1f5fa8; width: 0; border-radius: 2px; transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
+  .shap-fill.neg { background: #c97a17; }
+  .shap-val { width: 50px; text-align: right; font-family: ui-monospace, Menlo, monospace; color: #6b6b6b; }
+
+  .takeaway { background: #ede9df; border-radius: 12px; padding: 22px 26px; margin: 32px 0 16px; }
+  .takeaway h2 { margin: 0 0 10px; font-size: 17px; }
+  .takeaway ol { margin: 0; padding-left: 1.3rem; font-size: 14px; line-height: 1.8; }
+  .takeaway li { margin: 6px 0; }
+
+  .foot { text-align: right; font-size: 12px; color: #9a9282; margin-top: 32px; }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 32px 16px 48px; }
+    h1 { font-size: 22px; }
+    .method { grid-template-columns: 44px 1fr; padding: 16px 18px; }
+    .method .meta { grid-column: 2; text-align: left; margin-top: -4px; }
+    .method .num { font-size: 26px; }
+    .tabs { gap: 6px; }
+    .tab { padding: 6px 12px; font-size: 12px; }
+    .ex-var-row { flex-direction: column; gap: 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>実務で使える分析手法 10選</h1>
+    <p class="subtitle">2026年版｜経営者・現場の皆様向け。統計の専門知識なしで読めます</p>
+  </header>
+
+  <div class="hero">
+    <p>世の中の分析手法は100以上ありますが、日本企業の現場で本当に使われるのは10前後です。<br>
+    本資料では、<strong>(1) その10手法を「何ができるか」で整理</strong>し、<strong>(2) 各手法の具体的データ事例とビジネス成果</strong>を折り畳みで添え、<strong>(3) 載せなかった手法と理由</strong>を併記します。</p>
+  </div>
+
+  <h2>① 10手法の俯瞰</h2>
+  <p>タブで絞り込めます。各カードの「データ事例を見る」を開くと、実データのイメージとビジネス成果が読めます。</p>
+
+  <div class="tabs">
+    <button class="tab active" data-cat="all">全部見る <span class="count">(10)</span></button>
+    <button class="tab" data-cat="value">絶対値予測 <span class="count">(5)</span></button>
+    <button class="tab" data-cat="class">分類 <span class="count">(4)</span></button>
+    <button class="tab" data-cat="rank">順位予測 <span class="count">(1)</span></button>
+    <button class="tab" data-cat="opt">最適化 <span class="count">(2)</span></button>
+    <button class="tab" data-cat="explore">情報集約・グルーピング <span class="count">(2)</span></button>
+  </div>
+
+  <div class="tools">
+    <button id="expandAll">▶ 全ての事例を開く</button>
+    <button id="collapseAll">◀ 全ての事例を閉じる</button>
+  </div>
+
+  <div class="grid" id="grid">
+
+    <!-- 01 線形回帰 -->
+    <div class="method" data-cats="value">
+      <div class="num">01</div>
+      <div class="body">
+        <h3>線形回帰（重回帰分析）<span class="english">Linear Regression</span></h3>
+        <div class="badges"><span class="badge badge-value">絶対値予測</span></div>
+        <p class="one-liner">複数の要因から、目的の数値を直線的な関係で予測する。</p>
+        <div class="io">入力：複数の説明変数 ／ 出力：1つの数値</div>
+        <div class="examples">
+          <p class="examples-label">代表的なビジネス例</p>
+          <ul>
+            <li>広告費・店舗面積・立地スコアから売上を予測</li>
+            <li>従業員数・残業時間から離職率を推計</li>
+            <li>建物の築年数・面積・駅距離から家賃を見積もる</li>
+          </ul>
+        </div>
+        <div class="why"><strong>なぜ今これを選ぶか：</strong>係数を見れば「何がどれくらい効くか」が直接わかる、解釈性が最強の手法。本格モデルの前のベースラインとして必ず一度通す。LightGBM等の複雑モデルの「下敷き」としても価値が高い。</div>
+
+        <details class="example">
+          <summary>データ事例を見る</summary>
+          <div class="ex-body">
+            <p style="margin: 0 0 10px; font-weight: 500; font-size: 13px;">データ事例：不動産価格の予測</p>
+            <div class="ex-vars">
+              <div class="ex-var-row"><span class="ex-var-label">目的変数</span><span class="ex-var-text">物件価格（万円）</span></div>
+              <div class="ex-var-row"><span class="ex-var-label">説明変数</span><span class="ex-var-text">築年数（年） ／ 面積（㎡） ／ 駅徒歩（分） ／ 階数</span></div>
+            </div>
+            <div class="ex-table-wrap">
+              <table class="ex-table">
+                <thead><tr><th>築年数</th><th>面積</th><th>駅徒歩</th><th>階数</th><th>価格</th></tr></thead>
+                <tbody>
+                  <tr><td>10</td><td>80</td><td>5</td><td>5</td><td>3,200</td></tr>
+                  <tr><td>25</td><td>65</td><td>15</td><td>2</td><td>2,100</td></tr>
+                  <tr><td>5</td><td>100</td><td>2</td><td>8</td><td>4,500</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="ex-outcome">
+              <span class="ex-outcome-label">分析事例とビジネス成果</span>
+              <p>駅徒歩が10分縮まると価格は約400万円上昇、築年数が10年進むと約300万円下落、という形で各要因の金額的インパクトを定量化できる。価格査定の根拠説明に活用。</p>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="meta"><div class="stars">★★★</div><span class="meta-label">誰でも</span></div>
+    </div>
+
+    <!-- 02 ロジ回帰 -->
+    <div class="method" data-cats="class">
+      <div class="num">02</div>
+      <div class="body">
+        <h3>ロジスティック回帰<span class="english">Logistic Regression</span></h3>
+        <div class="badges"><span class="badge badge-class">分類</span></div>
+        <p class="one-liner">複数の要因から「Yes/No」「成約／不成約」の確率を予測する。</p>
+        <div class="io">入力：複数の説明変数 ／ 出力：0〜1の確率（→閾値で2値に）</div>
+        <div class="examples">
+          <p class="examples-label">代表的なビジネス例</p>
+          <ul>
+            <li>顧客属性・行動履歴から成約確率を予測</li>
+            <li>検査値から疾病あり／なしを判定</li>
+            <li>顧客の解約確率を計算してリテンション施策を打つ</li>
+          </ul>
+        </div>
+        <div class="why"><strong>なぜ今これを選ぶか：</strong>2値分類のベースライン。「ある変数が1上がるとオッズが何倍になるか」が直感的に語れる。判別分析の代替として、ほぼすべての場面でこちらを選んで良い。</div>
+
+        <details class="example">
+          <summary>データ事例を見る</summary>
+          <div class="ex-body">
+            <p style="margin: 0 0 10px; font-weight: 500; font-size: 13px;">データ事例：通信サービスの解約予測</p>
+            <div class="ex-vars">
+              <div class="ex-var-row"><span class="ex-var-label">目的変数</span><span class="ex-var-text">解約フラグ（1=解約 / 0=継続）</span></div>
+              <div class="ex-var-row"><span class="ex-var-label">説明変数</span><span class="ex-var-text">利用月数（月） ／ 月額料金（円） ／ 問合せ回数（回/月） ／ 年齢（歳）</span></div>
+            </div>
+            <div class="ex-table-wrap">
+              <table class="ex-table">
+                <thead><tr><th>利用月数</th><th>月額料金</th><th>問合せ回数</th><th>年齢</th><th>解約</th></tr></thead>
+                <tbody>
+                  <tr><td>24</td><td>3,900</td><td>0</td><td>42</td><td>0</td></tr>
+                  <tr><td>8</td><td>5,800</td><td>4</td><td>28</td><td>1</td></tr>
+                  <tr><td>36</td><td>2,980</td><td>1</td><td>55</td><td>0</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="ex-outcome">
+              <span class="ex-outcome-label">分析事例とビジネス成果</span>
+              <p>「利用月数12ヶ月未満かつ問合せ3回以上の顧客は解約確率68%」のようにスコアリング。解約確率の上位5%にリテンション施策（割引・専任窓口）を集中投下し、全社の解約率を2.4%→1.6%まで0.8ポイント改善。</p>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="meta"><div class="stars">★★★</div><span class="meta-label">誰でも</span></div>
+    </div>
+
+    <!-- 03 LightGBM -->
+    <div class="method" data-cats="value class rank">
+      <div class="num">03</div>
+      <div class="body">
+        <h3>LightGBM（勾配ブースティング木）<span class="english">LightGBM</span></h3>
+        <div class="badges">
+          <span class="badge badge-value">絶対値予測</span>
+          <span class="badge badge-class">分類</span>
+          <span class="badge badge-rank">順位予測</span>
+        </div>
+        <p class="one-liner">小さな決定木をAIが大量に組み合わせて、複雑なパターンを高精度で学習する。</p>
+        <div class="io">入力：何でも（数値・カテゴリ・欠損OK） ／ 出力：数値・分類・順位スコア</div>
+        <div class="examples">
+          <p class="examples-label">代表的なビジネス例</p>
+          <ul>
+            <li>需要予測、与信スコア、解約予測、不正検知</li>
+            <li>EC・社内検索のランキング（おすすめ順）</li>
+            <li>製造品質予測、医療リスクスコアリング</li>
+          </ul>
+        </div>
+        <div class="why"><strong>なぜ今これを選ぶか：</strong>2018年以降、構造化データの<strong>事実上の標準</strong>。前処理が最小で済み、欠損値・カテゴリ変数もそのまま扱える。Microsoft開発でオープンソース、商用利用も自由。SHAPと組み合わせると解釈性も担保できる。</div>
+
+        <details class="example">
+          <summary>データ事例を見る</summary>
+          <div class="ex-body">
+            <p style="margin: 0 0 10px; font-weight: 500; font-size: 13px;">データ事例：小売の商品別翌月需要予測</p>
+            <div class="ex-vars">
+              <div class="ex-var-row"><span class="ex-var-label">目的変数</span><span class="ex-var-text">翌月販売数（個）</span></div>
+              <div class="ex-var-row"><span class="ex-var-label">説明変数</span><span class="ex-var-text">過去3ヶ月平均販売数 ／ 価格（円） ／ プロモ有無 ／ 曜日構成 ／ 在庫数 ／ 競合価格 など20変数</span></div>
+            </div>
+            <div class="ex-table-wrap">
+              <table class="ex-table">
+                <thead><tr><th>商品ID</th><th>過去3ヶ月平均</th><th>価格</th><th>プロモ</th><th>在庫</th><th>翌月販売</th></tr></thead>
+                <tbody>
+                  <tr><td>A001</td><td>120</td><td>980</td><td>有</td><td>350</td><td>180</td></tr>
+                  <tr><td>A002</td><td>85</td><td>1,580</td><td>無</td><td>200</td><td>78</td></tr>
+                  <tr><td>A003</td><td>320</td><td>480</td><td>有</td><td>800</td><td>410</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="ex-outcome">
+              <span class="ex-outcome-label">分析事例とビジネス成果</span>
+              <p>従来の線形回帰モデルから、平均予測誤差（MAPE）を24%→11%に改善。発注精度向上で在庫廃棄ロスを年間2億円削減。SHAPで「プロモが効く商品／効かない商品」を可視化し、販促予算の再配分にも活用。</p>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="meta"><div class="stars">★★</div><span class="meta-label">少し勉強</span></div>
+    </div>
+
+    <!-- 04 Random Forest -->
+    <div class="method" data-cats="value class">
+      <div class="num">04</div>
+      <div class="body">
+        <h3>ランダムフォレスト<span class="english">Random Forest</span></h3>
+        <div class="badges"><span class="badge badge-value">絶対値予測</span><span class="badge badge-class">分類</span></div>
+        <p class="one-liner">たくさんの決定木の多数決で、安定した予測を行う。</p>
+        <div class="io">入力：何でも ／ 出力：数値・分類</div>
+        <div class="examples">
+          <p class="examples-label">代表的なビジネス例</p>
+          <ul>
+            <li>与信スコア、顧客LTV予測</li>
+            <li>「どの説明変数が効いているか」の探索的分析</li>
+            <li>LightGBMを使う前のベンチマーク</li>
+          </ul>
+        </div>
+        <div class="why"><strong>なぜ今これを選ぶか：</strong>LightGBM登場前の主役で、現在も「特徴量重要度の素早い把握」と「ハイパーパラメータ調整が少なく済む安心感」で愛用されている。本番モデルとしてはLightGBMに譲るが、社内資産として根強く残る。</div>
+
+        <details class="example">
+          <summary>データ事例を見る</summary>
+          <div class="ex-body">
+            <p style="margin: 0 0 10px; font-weight: 500; font-size: 13px;">データ事例：個人ローンの与信スコアリング</p>
+            <div class="ex-vars">
+              <div class="ex-var-row"><span class="ex-var-label">目的変数</span><span class="ex-var-text">与信スコア（0〜1000）</span></div>
+              <div class="ex-var-row"><span class="ex-var-label">説明変数</span><span class="ex-var-text">年収（万円） ／ 勤続年数 ／ 借入残高（万円） ／ 過去の延滞回数 ／ 雇用形態</span></div>
+            </div>
+            <div class="ex-table-wrap">
+              <table class="ex-table">
+                <thead><tr><th>年収</th><th>勤続</th><th>借入残高</th><th>延滞</th><th>雇用</th><th>スコア</th></tr></thead>
+                <tbody>
+                  <tr><td>580</td><td>8</td><td>280</td><td>0</td><td>正社員</td><td>820</td></tr>
+                  <tr><td>320</td><td>2</td><td>410</td><td>3</td><td>派遣</td><td>350</td></tr>
+                  <tr><td>720</td><td>15</td><td>150</td><td>0</td><td>正社員</td><td>910</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="ex-outcome">
+              <span class="ex-outcome-label">分析事例とビジネス成果</span>
+              <p>各申込者にスコア発行。同時に「延滞回数が1回増えるとスコア−85点」「勤続が5年伸びるとスコア+40点」などの特徴量重要度マップを審査担当者に提示し、判断根拠の透明化を実現。審査時間を平均45分→18分に短縮。</p>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="meta"><div class="stars">★★</div><span class="meta-label">少し勉強</span></div>
+    </div>
+
+    <!-- 05 ニューラルネット -->
+    <div class="method" data-cats="value class">
+      <div class="num">05</div>
+      <div class="body">
+        <h3>ニューラルネット／ディープラーニング<span class="english">Neural Network</span></h3>
+        <div class="badges"><span class="badge badge-value">絶対値予測</span><span class="badge badge-class">分類</span></div>
+        <p class="one-liner">人間の脳神経を模した多層構造で、画像・音声・テキストなどの複雑データを扱う。</p>
+        <div class="io">入力：画像・音声・テキスト・大規模数値 ／ 出力：分類・数値・生成物</div>
+        <div class="examples">
+          <p class="examples-label">代表的なビジネス例</p>
+          <ul>
+            <li>レントゲン画像から病変を検出</li>
+            <li>コールセンター音声を自動文字起こし＆要約</li>
+            <li>カスタマーサポートの問い合わせを自動分類</li>
+            <li>ChatGPT等の生成AIの基盤技術</li>
+          </ul>
+        </div>
+        <div class="why"><strong>なぜ今これを選ぶか：</strong>画像・音声・テキストといった<strong>非構造化データ</strong>の主役。構造化データ（表形式）ではLightGBMに分があるため、データの種類で使い分ける。Python＋PyTorchで実装、GPU推奨。</div>
+
+        <details class="example">
+          <summary>データ事例を見る</summary>
+          <div class="ex-body">
+            <p style="margin: 0 0 10px; font-weight: 500; font-size: 13px;">データ事例：製造ラインの外観検査（画像分類）</p>
+            <div class="ex-vars">
+              <div class="ex-var-row"><span class="ex-var-label">目的変数</span><span class="ex-var-text">判定ラベル（良品 / 不良品＋不良種別）</span></div>
+              <div class="ex-var-row"><span class="ex-var-label">説明変数</span><span class="ex-var-text">製品表面のカメラ撮影画像（256×256ピクセル、RGB）</span></div>
+            </div>
+            <div class="ex-table-wrap">
+              <table class="ex-table">
+                <thead><tr><th>画像ID</th><th>サイズ</th><th>撮影ライン</th><th>教師ラベル</th></tr></thead>
+                <tbody>
+                  <tr><td>IMG_001</td><td>256×256</td><td>A-3</td><td>良品</td></tr>
+                  <tr><td>IMG_002</td><td>256×256</td><td>A-3</td><td>不良品（キズ）</td></tr>
+                  <tr><td>IMG_003</td><td>256×256</td><td>B-1</td><td>不良品（色ムラ）</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="ex-outcome">
+              <span class="ex-outcome-label">分析事例とビジネス成果</span>
+              <p>製造ラインで毎時1万枚の画像を自動判定。目視検査員5名→1名に削減（人件費年間2,400万円減）。検出精度は熟練検査員と同等の98.7%。不良種別ごとの発生率も自動集計され、上流の製造条件改善にも活用。</p>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="meta"><div class="stars">★</div><span class="meta-label">専門知識要</span></div>
+    </div>
+
+    <!-- 06 Prophet -->
+    <div class="method" data-cats="value">
+      <div class="num">06</div>
+      <div class="body">
+        <h3>時系列予測（Prophet ほか）<span class="english">Time-Series Forecasting</span></h3>
+        <div class="badges"><span class="badge badge-value">絶対値予測</span></div>
+        <p class="one-liner">過去の時間データから未来を予測。曜日・季節・トレンドも自動学習する。</p>
+        <div class="io">入力：日次／週次／月次の時系列データ ／ 出力：将来の数値＋信頼区間</div>
+        <div class="examples">
+          <p class="examples-label">代表的なビジネス例</p>
+          <ul>
+            <li>店舗別・商品別の需要予測（曜日・季節を考慮）</li>
+            <li>Webサイトの月次アクセス予測</li>
+            <li>電力需要予測、コールセンター入電数予測</li>
+          </ul>
+        </div>
+        <div class="why"><strong>なぜ今これを選ぶか：</strong>Meta（旧Facebook）製のProphetは、ARIMA等の古典時系列モデルより<strong>直感的に扱える</strong>。祝日・キャンペーン日を効果として入れたり、週次・年次の周期性を自動検出したりと、現場で必要な機能が標準装備。</div>
+
+        <details class="example">
+          <summary>データ事例を見る</summary>
+          <div class="ex-body">
+            <p style="margin: 0 0 10px; font-weight: 500; font-size: 13px;">データ事例：飲食店チェーンの店舗別来店客数予測</p>
+            <div class="ex-vars">
+              <div class="ex-var-row"><span class="ex-var-label">目的変数</span><span class="ex-var-text">日次の来店客数（人）</span></div>
+              <div class="ex-var-row"><span class="ex-var-label">説明変数</span><span class="ex-var-text">日付（時系列） ／ 曜日 ／ 祝日フラグ ／ キャンペーンフラグ ／ 最高気温</span></div>
+            </div>
+            <div class="ex-table-wrap">
+              <table class="ex-table">
+                <thead><tr><th>日付</th><th>曜日</th><th>祝日</th><th>キャンペーン</th><th>最高気温</th><th>客数</th></tr></thead>
+                <tbody>
+                  <tr><td>2026-06-08</td><td>月</td><td>0</td><td>0</td><td>26</td><td>320</td></tr>
+                  <tr><td>2026-06-09</td><td>火</td><td>0</td><td>0</td><td>28</td><td>285</td></tr>
+                  <tr><td>2026-06-10</td><td>水</td><td>0</td><td>1</td><td>30</td><td>510</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="ex-outcome">
+              <span class="ex-outcome-label">分析事例とビジネス成果</span>
+              <p>来店予測精度（MAPE）を従来の22%→9%に改善。シフト人員配置の過不足が減り、人件費を月間120万円削減。週末・キャンペーン日も自動で増員提案され、ピーク日の機会損失（客待ち離脱）も大幅減少。</p>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="meta"><div class="stars">★★</div><span class="meta-label">少し勉強</span></div>
+    </div>
+
+    <!-- 07 k-means -->
+    <div class="method" data-cats="explore">
+      <div class="num">07</div>
+      <div class="body">
+        <h3>クラスタリング（k-means）<span class="english">k-means Clustering</span></h3>
+        <div class="badges"><span class="badge badge-explore">グルーピング</span></div>
+        <p class="one-liner">似た特徴を持つデータを、指定した数のグループに自動で分ける。</p>
+        <div class="io">入力：複数の特徴量 ／ 出力：各サンプルのグループ番号</div>
+        <div class="examples">
+          <p class="examples-label">代表的なビジネス例</p>
+          <ul>
+            <li>顧客セグメンテーション（購買金額×頻度×最終来店）</li>
+            <li>店舗の特性分類（立地×規模×商圏属性）</li>
+            <li>商品の売れ筋パターン分析</li>
+          </ul>
+        </div>
+        <div class="why"><strong>なぜ今これを選ぶか：</strong>シンプルで結果が直感的、マーケティング・店舗運営の現場で頻繁に使われる。「いくつのグループに分けるか（k）」を分析者が決める必要があるが、それも肌感覚で運用できる。発展形のHDBSCAN等もあるが、まずはk-meansで足りる。</div>
+
+        <details class="example">
+          <summary>データ事例を見る</summary>
+          <div class="ex-body">
+            <p style="margin: 0 0 10px; font-weight: 500; font-size: 13px;">データ事例：ECサイトの顧客セグメンテーション</p>
+            <div class="ex-vars">
+              <div class="ex-var-row"><span class="ex-var-label">目的変数</span><span class="ex-var-text">なし（教師なし学習）</span></div>
+              <div class="ex-var-row"><span class="ex-var-label">説明変数</span><span class="ex-var-text">年間購入金額 ／ 購入頻度（年） ／ 最終購入からの日数 ／ 年齢</span></div>
+            </div>
+            <div class="ex-table-wrap">
+              <table class="ex-table">
+                <thead><tr><th>顧客ID</th><th>年間金額</th><th>頻度</th><th>最終購入</th><th>年齢</th><th>クラスタ</th></tr></thead>
+                <tbody>
+                  <tr><td>C001</td><td>480,000</td><td>24</td><td>5日前</td><td>38</td><td>優良</td></tr>
+                  <tr><td>C002</td><td>95,000</td><td>4</td><td>60日前</td><td>52</td><td>一般</td></tr>
+                  <tr><td>C003</td><td>18,000</td><td>1</td><td>180日前</td><td>29</td><td>離反予備軍</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="ex-outcome">
+              <span class="ex-outcome-label">分析事例とビジネス成果</span>
+              <p>顧客を5クラスタに分類：優良(8%)、成長(15%)、一般(40%)、休眠予備軍(25%)、離反予備軍(12%)。クラスタ別にメール配信頻度と内容を変えるCRMを導入し、メール経由売上を1.6倍に。離反予備軍向けには限定クーポンで休眠化を抑制。</p>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="meta"><div class="stars">★★★</div><span class="meta-label">誰でも</span></div>
+    </div>
+
+    <!-- 08 PCA -->
+    <div class="method" data-cats="explore">
+      <div class="num">08</div>
+      <div class="body">
+        <h3>主成分分析（PCA）<span class="english">Principal Component Analysis</span></h3>
+        <div class="badges"><span class="badge badge-explore">情報集約</span></div>
+        <p class="one-liner">大量の指標を、情報をなるべく保ったまま、少数の合成指標にまとめる。</p>
+        <div class="io">入力：多数の数値指標 ／ 出力：少数の合成指標（主成分）</div>
+        <div class="examples">
+          <p class="examples-label">代表的なビジネス例</p>
+          <ul>
+            <li>従業員サーベイの50問を「やる気軸」「人間関係軸」の2次元に集約して可視化</li>
+            <li>30種類の財務指標を2-3軸に圧縮して企業ポジショニングを散布図化</li>
+            <li>ノイズの多いセンサーデータを前処理する</li>
+          </ul>
+        </div>
+        <div class="why"><strong>なぜ今これを選ぶか：</strong>「数十の指標を見比べたいが多すぎて頭に入らない」時の定番。<strong>可視化と前処理の両方で活躍</strong>。発展形のUMAP・t-SNEは可視化に強いが、まずはPCAで十分。</div>
+
+        <details class="example">
+          <summary>データ事例を見る</summary>
+          <div class="ex-body">
+            <p style="margin: 0 0 10px; font-weight: 500; font-size: 13px;">データ事例：従業員エンゲージメントサーベイの可視化</p>
+            <div class="ex-vars">
+              <div class="ex-var-row"><span class="ex-var-label">目的変数</span><span class="ex-var-text">なし（情報集約）</span></div>
+              <div class="ex-var-row"><span class="ex-var-label">説明変数</span><span class="ex-var-text">サーベイ全50問（各5段階評価。仕事の満足度・上司との関係・成長機会など）</span></div>
+            </div>
+            <div class="ex-table-wrap">
+              <table class="ex-table">
+                <thead><tr><th>従業員ID</th><th>Q1</th><th>Q2</th><th>Q3</th><th>…</th><th>Q50</th><th>→</th><th>PC1</th><th>PC2</th></tr></thead>
+                <tbody>
+                  <tr><td>E001</td><td>5</td><td>4</td><td>4</td><td>…</td><td>5</td><td>→</td><td>+2.3</td><td>+0.8</td></tr>
+                  <tr><td>E002</td><td>2</td><td>1</td><td>3</td><td>…</td><td>2</td><td>→</td><td>−1.9</td><td>−0.5</td></tr>
+                  <tr><td>E003</td><td>4</td><td>5</td><td>2</td><td>…</td><td>3</td><td>→</td><td>+0.7</td><td>−1.4</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="ex-outcome">
+              <span class="ex-outcome-label">分析事例とビジネス成果</span>
+              <p>50問→2軸（PC1=「やる気・成長意欲軸」、PC2=「人間関係・心理安全軸」）に圧縮し、部署単位で散布図にプロット。低やる気・低人間関係の象限にある部署が一目で特定でき、HR施策の優先投入先が明確化。1on1強化・マネージャー研修を該当部署に集中投下し、半年後にエンゲージスコアを平均0.6ポイント改善。</p>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="meta"><div class="stars">★★</div><span class="meta-label">少し勉強</span></div>
+    </div>
+
+    <!-- 09 MIP -->
+    <div class="method" data-cats="opt">
+      <div class="num">09</div>
+      <div class="body">
+        <h3>混合整数計画法（MIP）<span class="english">Mixed Integer Programming</span></h3>
+        <div class="badges"><span class="badge badge-opt">最適化</span></div>
+        <p class="one-liner">制約条件を満たしつつ、最良の組み合わせを数学的に厳密に探し出す。</p>
+        <div class="io">入力：目的関数＋制約条件 ／ 出力：最適な変数の組み合わせ</div>
+        <div class="examples">
+          <p class="examples-label">代表的なビジネス例</p>
+          <ul>
+            <li>配送ルート最適化（巡回セールスマン問題）</li>
+            <li>シフト計画・要員配置（労働基準＋スキル＋希望を満たす）</li>
+            <li>生産計画・設備稼働スケジュール</li>
+            <li>店舗出店候補の組み合わせ最適化</li>
+          </ul>
+        </div>
+        <div class="why"><strong>なぜ今これを選ぶか：</strong>業務最適化の<strong>王道</strong>。商用ソルバー（Gurobi、CPLEX）と無料ソルバー（OR-Tools、PuLP）が成熟しており、数万変数の問題でも数分〜数時間で厳密最適解が出る。遺伝的アルゴリズムよりも速くて正確なケースがほとんど。</div>
+
+        <details class="example">
+          <summary>データ事例を見る</summary>
+          <div class="ex-body">
+            <p style="margin: 0 0 10px; font-weight: 500; font-size: 13px;">データ事例：物流2拠点×100店舗の配送ルート最適化</p>
+            <div class="ex-vars">
+              <div class="ex-var-row"><span class="ex-var-label">目的変数</span><span class="ex-var-text">総配送コスト（円、最小化）</span></div>
+              <div class="ex-var-row"><span class="ex-var-label">制約・入力</span><span class="ex-var-text">拠点〜店舗の距離マトリクス ／ 各店舗の必要箱数 ／ トラック台数と積載上限 ／ 配送時間制約</span></div>
+            </div>
+            <div class="ex-table-wrap">
+              <table class="ex-table">
+                <thead><tr><th>出発拠点</th><th>納品先</th><th>距離(km)</th><th>単位コスト</th><th>必要数</th></tr></thead>
+                <tbody>
+                  <tr><td>倉庫A</td><td>店舗1</td><td>12</td><td>200円/km</td><td>50箱</td></tr>
+                  <tr><td>倉庫A</td><td>店舗2</td><td>25</td><td>200円/km</td><td>30箱</td></tr>
+                  <tr><td>倉庫B</td><td>店舗1</td><td>18</td><td>180円/km</td><td>50箱</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="ex-outcome">
+              <span class="ex-outcome-label">分析事例とビジネス成果</span>
+              <p>トラック40台×100店舗の配送計画を5分で最適化。配送コストを月額1,200万円→890万円（26%削減、年間3,720万円減）。Excel手作業の計画策定（3日）を完全自動化し、計画担当者は例外対応と改善に専念できるように。</p>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="meta"><div class="stars">★★</div><span class="meta-label">少し勉強</span></div>
+    </div>
+
+    <!-- 10 ベイズ最適化 -->
+    <div class="method" data-cats="opt">
+      <div class="num">10</div>
+      <div class="body">
+        <h3>ベイズ最適化<span class="english">Bayesian Optimization</span></h3>
+        <div class="badges"><span class="badge badge-opt">最適化</span></div>
+        <p class="one-liner">少ない試行回数で「最良の設定」を効率的に探す。1回の実験が高コストな時に強い。</p>
+        <div class="io">入力：パラメータ範囲＋評価関数 ／ 出力：最良パラメータ</div>
+        <div class="examples">
+          <p class="examples-label">代表的なビジネス例</p>
+          <ul>
+            <li>AB試験の設計（どの組み合わせを試すべきか）</li>
+            <li>製造プロセスの条件最適化（温度・圧力・時間）</li>
+            <li>機械学習モデルのハイパーパラメータ調整</li>
+            <li>マーケティングキャンペーンの予算配分</li>
+          </ul>
+        </div>
+        <div class="why"><strong>なぜ今これを選ぶか：</strong>「実験回数を最小化したい」場面で効く。Optuna（オープンソース）が日本企業でも広く使われる。試行ごとに次に試すべき条件をAIが提案してくれるため、現場の試行錯誤コストが大幅に下がる。</div>
+
+        <details class="example">
+          <summary>データ事例を見る</summary>
+          <div class="ex-body">
+            <p style="margin: 0 0 10px; font-weight: 500; font-size: 13px;">データ事例：化学プラントの製造条件最適化</p>
+            <div class="ex-vars">
+              <div class="ex-var-row"><span class="ex-var-label">目的変数</span><span class="ex-var-text">製品収率（%、最大化）</span></div>
+              <div class="ex-var-row"><span class="ex-var-label">説明変数（探索範囲）</span><span class="ex-var-text">反応温度（80〜180℃） ／ 圧力（1.0〜5.0MPa） ／ 反応時間（10〜180分） ／ 触媒濃度（0.1〜2.0%）</span></div>
+            </div>
+            <div class="ex-table-wrap">
+              <table class="ex-table">
+                <thead><tr><th>試行</th><th>温度</th><th>圧力</th><th>時間</th><th>触媒濃度</th><th>収率</th></tr></thead>
+                <tbody>
+                  <tr><td>#1</td><td>120</td><td>2.0</td><td>60</td><td>0.5</td><td>78.2%</td></tr>
+                  <tr><td>#2</td><td>140</td><td>3.0</td><td>90</td><td>1.0</td><td>84.5%</td></tr>
+                  <tr><td>#3</td><td>155</td><td>3.5</td><td>75</td><td>1.2</td><td>89.1%</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="ex-outcome">
+              <span class="ex-outcome-label">分析事例とビジネス成果</span>
+              <p>従来のグリッドサーチで200回必要だった実験を、ベイズ最適化で30回に短縮。1回の実験コストが約8万円のため、実験費用を1,600万円→240万円に削減。さらに最終収率も86.0%→91.3%まで向上し、年間製造コストを別途5,000万円削減。</p>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="meta"><div class="stars">★★</div><span class="meta-label">少し勉強</span></div>
+    </div>
+
+  </div>
+
+  <h2>② 載せなかった手法と、その理由</h2>
+  <p>旧表に登場していた手法のうち、現代の実務では新顔に置き換わったものを併記します。「<button id="strikeBtn" style="font: inherit; font-size: 13px; background: #1a1a1a; color: #fff; border: 1px solid #1a1a1a; border-radius: 999px; padding: 6px 14px; cursor: pointer; margin-left: 6px;">▶ 取り消し線を引く</button>」を押すと、旧手法に線が引かれます。</p>
+
+  <div class="removed">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 24%;">旧手法</th>
+          <th style="width: 28%;">代わりに使う現代手法</th>
+          <th>載せなかった理由</th>
+        </tr>
+      </thead>
+      <tbody id="removedBody">
+        <tr><td class="strike">数量化Ⅰ類</td><td class="replace">線形回帰（ダミー変数）／ LightGBM</td><td>国際標準でないため、Python等のソフトに実装がない。ダミー変数を入れた線形回帰と数学的にほぼ等価。</td></tr>
+        <tr><td class="strike">数量化Ⅱ類</td><td class="replace">ロジスティック回帰／ LightGBM</td><td>同上。ダミー変数を入れたロジスティック回帰で代用できる。</td></tr>
+        <tr><td class="strike">数量化Ⅲ類</td><td class="replace">主成分分析（PCA）／ コレスポンデンス分析</td><td>同上。可視化目的ならPCAやUMAPで十分。</td></tr>
+        <tr><td class="strike">判別分析（線形・二次）</td><td class="replace">ロジスティック回帰／ LightGBM</td><td>「群内分散が等しい」「多変量正規性」など強い前提が必要。ロジ回帰は前提が緩く、係数解釈もオッズ比で直感的。</td></tr>
+        <tr><td class="strike">多項式回帰</td><td class="replace">LightGBM／ XGBoost</td><td>過学習しやすく、変数増えると組み合わせが爆発。非線形は現代手法が自動学習してくれる。</td></tr>
+        <tr><td class="strike">遺伝的アルゴリズム（GA）</td><td class="replace">混合整数計画法（MIP）／ ベイズ最適化</td><td>2000年代までの主役。現在は業務最適化はMIPで厳密に解け、ハイパーパラメータ最適化はベイズ最適化が速く正確。</td></tr>
+        <tr><td class="strike">SVM（サポートベクターマシン）</td><td class="replace">LightGBM／ ニューラルネット</td><td>2010年代前半までは強かったが、構造化データはLightGBM、非構造化はニューラルネットに挟まれて出番が縮小。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>③ 補論：手法カタログの周辺で押さえたい2つ</h2>
+  <p>厳密には「手法」ではないが、これがあるから現代の手法群が経営判断に使えるという土台です。</p>
+
+  <div class="appendix-grid">
+    <div class="appendix-card">
+      <span class="tag">解釈技術</span>
+      <h3>SHAP（シャップ）</h3>
+      <p>LightGBM等の「中身が見えないモデル」の予測結果を、各変数の貢献度として可視化する手法。<br><br>
+      下の例：顧客が解約する／しないの予測において、各変数がどれだけ確率を上下させたかを示す。</p>
+      <div class="shap-demo" id="shapDemo">
+        <div class="shap-row"><span class="shap-label">利用月数</span><div class="shap-bar"><div class="shap-fill" data-w="80%"></div></div><span class="shap-val">+0.32</span></div>
+        <div class="shap-row"><span class="shap-label">月額料金</span><div class="shap-bar"><div class="shap-fill" data-w="60%"></div></div><span class="shap-val">+0.21</span></div>
+        <div class="shap-row"><span class="shap-label">問合せ回数</span><div class="shap-bar"><div class="shap-fill neg" data-w="45%"></div></div><span class="shap-val">−0.15</span></div>
+        <div class="shap-row"><span class="shap-label">年齢</span><div class="shap-bar"><div class="shap-fill neg" data-w="20%"></div></div><span class="shap-val">−0.07</span></div>
+      </div>
+      <p style="margin-top: 10px; font-size: 12px; color: #6b6b6b;">「精度を取るか、説明可能性を取るか」の二択だった時代を終わらせたのがSHAP。経営報告でも使える。</p>
+    </div>
+
+    <div class="appendix-card">
+      <span class="tag">自動化</span>
+      <h3>AutoML（オートエムエル）</h3>
+      <p>手法選び・前処理・ハイパーパラメータ調整までを自動化するツール群。代表例はDataRobot（商用）、H2O AutoML、PyCaret（無料）。<br><br>
+      経営判断としては、社内に分析チームを抱えるか・AutoMLで完結させるかが新しい選択肢になっています。「手法カタログ」が必要な前提は変わりつつあります。</p>
+      <p style="margin-top: 10px; font-size: 12px; color: #6b6b6b;">ただし「結果を読んで意思決定する」のは人の仕事。本カタログの10手法を押さえれば、AutoMLが何を出してきても理解できます。</p>
+    </div>
+  </div>
+
+  <div class="takeaway">
+    <h2>持ち帰りメッセージ</h2>
+    <ol>
+      <li><strong>10手法を押さえれば、実務の8〜9割はカバーできる。</strong>「全部勉強しなければ」というプレッシャーは不要。</li>
+      <li><strong>構造化データ（表形式）の予測・分類は、ほぼLightGBMに収束した。</strong>従来の回帰分析・判別分析・数量化系の役割を一手に引き受けつつある。</li>
+      <li><strong>「精度と説明可能性のトレードオフ」はSHAPで大きく緩和された。</strong>経営報告に強くなった。</li>
+      <li><strong>順位予測は、絶対値予測の応用形として理解すればOK。</strong>独立した分野として身構える必要はない。</li>
+      <li><strong>業務最適化はMIPが王道。</strong>遺伝的アルゴリズムは過去の主役だったが、現代は限定用途。</li>
+      <li><strong>非構造化データ（画像・音声・テキスト）はニューラルネットの領域。</strong>構造化データとは別世界として住み分ける。</li>
+    </ol>
+  </div>
+
+  <p class="foot">学びラボ（Manabi-Lab）／ 2026年6月</p>
+</div>
+
+<script>
+// ===== Stagger fade-in on load =====
+(function() {
+  const cards = document.querySelectorAll('.method');
+  cards.forEach((c, i) => {
+    setTimeout(() => c.classList.add('visible'), 80 + i * 60);
+  });
+})();
+
+// ===== Filter tabs =====
+(function() {
+  const tabs = document.querySelectorAll('.tab');
+  const cards = document.querySelectorAll('.method');
+
+  function applyFilter(cat) {
+    tabs.forEach(t => t.classList.toggle('active', t.dataset.cat === cat));
+    cards.forEach((card, i) => {
+      const cats = (card.dataset.cats || '').split(' ');
+      const show = (cat === 'all') || cats.includes(cat);
+      if (show) {
+        card.classList.remove('hidden');
+        card.classList.remove('visible');
+        setTimeout(() => card.classList.add('visible'), 50 + i * 50);
+      } else {
+        card.classList.remove('visible');
+        setTimeout(() => card.classList.add('hidden'), 250);
+      }
+    });
+  }
+  tabs.forEach(t => t.addEventListener('click', () => applyFilter(t.dataset.cat)));
+})();
+
+// ===== Expand / Collapse all =====
+(function() {
+  const allDetails = document.querySelectorAll('details.example');
+  document.getElementById('expandAll').addEventListener('click', () => {
+    allDetails.forEach(d => d.open = true);
+  });
+  document.getElementById('collapseAll').addEventListener('click', () => {
+    allDetails.forEach(d => d.open = false);
+  });
+})();
+
+// ===== Strikethrough animation on removed methods =====
+(function() {
+  const btn = document.getElementById('strikeBtn');
+  const items = document.querySelectorAll('#removedBody .strike');
+  let toggled = false;
+  btn.addEventListener('click', () => {
+    if (!toggled) {
+      items.forEach((el, i) => setTimeout(() => el.classList.add('go'), 80 + i * 130));
+      btn.textContent = '↺ 戻す';
+      toggled = true;
+    } else {
+      items.forEach(el => el.classList.remove('go'));
+      btn.textContent = '▶ 取り消し線を引く';
+      toggled = false;
+    }
+  });
+})();
+
+// ===== SHAP demo bar animation (on scroll into view) =====
+(function() {
+  const demo = document.getElementById('shapDemo');
+  const fills = demo.querySelectorAll('.shap-fill');
+  let played = false;
+  function play() {
+    if (played) return;
+    played = true;
+    fills.forEach((f, i) => {
+      setTimeout(() => f.style.width = f.dataset.w, 200 + i * 200);
+    });
+  }
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) play(); });
+  }, { threshold: 0.3 });
+  io.observe(demo);
+})();
+</script>
+</body>
+</html>
