@@ -1,0 +1,1108 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>LLMの思考プロセス：文脈構築から確率的生成へ</title>
+    <style>
+        body {
+            margin: 0;
+            background: linear-gradient(135deg, #020617 0%, #0a1428 100%);
+            overflow: hidden;
+            font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Meiryo', sans-serif;
+            color: white;
+        }
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(15, 23, 42, 0.92);
+            padding: 24px;
+            border-radius: 14px;
+            border-left: 5px solid #38bdf8;
+            width: 380px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+        }
+        #ui-panel h2 {
+            margin: 0 0 4px 0;
+            font-size: 18px;
+            color: #f8fafc;
+            letter-spacing: 0.02em;
+        }
+        #ui-panel .subtitle {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 18px;
+        }
+        .step-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        button {
+            padding: 12px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            background: #1e293b;
+            color: #94a3b8;
+            transition: all 0.25s ease;
+            text-align: left;
+            font-family: inherit;
+        }
+        button:hover:not(.active) {
+            background: #283548;
+            color: #cbd5e1;
+        }
+        button.active {
+            background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+            color: #020617;
+            border-color: #38bdf8;
+            box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
+        }
+        #description {
+            margin-top: 18px;
+            font-size: 13px;
+            color: #cbd5e1;
+            line-height: 1.7;
+            min-height: 95px;
+            padding: 14px;
+            background: rgba(2, 6, 23, 0.5);
+            border-radius: 8px;
+            border-left: 3px solid #38bdf8;
+        }
+        #description b {
+            color: #38bdf8;
+        }
+        #legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.92);
+            padding: 14px 18px;
+            border-radius: 10px;
+            font-size: 12px;
+            display: flex;
+            gap: 18px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            box-shadow: 0 0 8px currentColor;
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.92);
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 12px;
+            color: #94a3b8;
+            backdrop-filter: blur(8px);
+        }
+        #controls label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        #subtitle {
+            position: absolute;
+            left: 50%;
+            bottom: 80px;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(2, 6, 23, 0.88);
+            padding: 16px 28px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+            max-width: 80vw;
+            min-width: 320px;
+            text-align: center;
+            font-size: 17px;
+            line-height: 1.6;
+            letter-spacing: 0.04em;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+        }
+        #subtitle.visible {
+            opacity: 1;
+        }
+        #subtitle .prompt-text {
+            color: #7dd3fc;
+        }
+        #subtitle .response-text {
+            color: #6ee7b7;
+        }
+        #subtitle .arrow {
+            color: #64748b;
+            margin: 0 10px;
+            font-size: 14px;
+        }
+        #subtitle .label {
+            display: block;
+            font-size: 11px;
+            color: #64748b;
+            letter-spacing: 0.15em;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+        #subtitle .new-word {
+            animation: wordFadeIn 0.4s ease;
+            display: inline-block;
+        }
+        @keyframes wordFadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="ui-panel">
+    <h2>LLMの思考プロセス</h2>
+    <div class="subtitle">文脈構築から確率的生成まで</div>
+    <div class="step-container">
+        <button id="btn0" onclick="runStep(0)" class="active">0. 初期状態 ─ 無秩序な記号の海</button>
+        <button id="btn1" onclick="runStep(1)">1. ベクトル化 ─ 意味の地図を構築</button>
+        <button id="btn2" onclick="runStep(2)">2. プロンプト入力 ─ 文脈の軌跡</button>
+        <button id="btn3" onclick="runStep(3)">3. 確率的サンプリング ─ 次の単語を確率で選ぶ</button>
+    </div>
+    <div id="description">
+        単語が数値化される前は、コンピューターにとってただの記号の集まりです。意味の関連性は存在しません。代表的な「言葉」が空間にバラバラに漂っています。
+    </div>
+</div>
+
+<div id="controls">
+    <label><input type="checkbox" id="rotateToggle" checked> 自動回転</label>
+</div>
+
+<div id="legend">
+    <div class="legend-item"><span class="legend-dot" style="background:#38bdf8;color:#38bdf8"></span>保険</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#f43f5e;color:#f43f5e"></span>医療</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#10b981;color:#10b981"></span>事務手続き</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#f59e0b;color:#f59e0b"></span>その他</div>
+</div>
+
+<div id="subtitle">
+    <span class="label">SUBTITLE</span>
+    <div id="subtitle-content"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+    let scene, camera, renderer, controls;
+    let pointsMesh;
+    let promptGroup, responseGroup, candidateGroup, labelGroup, floatWordGroup;
+    const numPoints = 1600;
+    const particles = [];
+    let currentStep = 0;
+    let animationToken = 0; // 再生中のアニメーションを識別
+
+    // クラスター定義（間隔は控えめ、塊自体を大きく見せる）
+    const clusters = [
+        { center: new THREE.Vector3(55, 28, 18), color: 0x38bdf8, name: '保険' },
+        { center: new THREE.Vector3(-58, -10, 24), color: 0xf43f5e, name: '医療' },
+        { center: new THREE.Vector3(12, -55, -26), color: 0x10b981, name: '事務手続き' },
+        { center: new THREE.Vector3(-22, 55, -38), color: 0xf59e0b, name: 'その他' }
+    ];
+    const PROMPT_CLUSTER = 0; // 青（保険）がプロンプト対象
+    const TARGET_CLUSTER = 2; // 緑（事務手続き）が回答対象
+
+    // 初期状態で空間に漂う「代表的な言葉」（クラスター別に色分けし、ベクトル化前は無秩序に散らばる）
+    const floatingWords = [
+        { text: '保険',   clusterIdx: 0 },
+        { text: '契約',   clusterIdx: 0 },
+        { text: '加入',   clusterIdx: 0 },
+        { text: '補償',   clusterIdx: 0 },
+        { text: '医療',   clusterIdx: 1 },
+        { text: '診察',   clusterIdx: 1 },
+        { text: '症状',   clusterIdx: 1 },
+        { text: '治療',   clusterIdx: 1 },
+        { text: '手続き', clusterIdx: 2 },
+        { text: '書類',   clusterIdx: 2 },
+        { text: '申請',   clusterIdx: 2 },
+        { text: '窓口',   clusterIdx: 2 },
+        { text: '天気',   clusterIdx: 3 },
+        { text: '旅行',   clusterIdx: 3 },
+        { text: '音楽',   clusterIdx: 3 },
+        { text: '料理',   clusterIdx: 3 }
+    ];
+
+    // プロンプト単語（文脈の軌跡）── すべて青クラスター内で完結
+    // 大きくなった青クラスター内（半径50）で5つの単語が重ならないよう3D空間で分散
+    const promptWords = [
+        { text: '保険',     clusterIdx: 0, offset: new THREE.Vector3( 28,  18,  15) },
+        { text: 'について', clusterIdx: 0, offset: new THREE.Vector3(-22,  20, -18) },
+        { text: '手続き',   clusterIdx: 0, offset: new THREE.Vector3( 15, -22,  25) },
+        { text: 'を',       clusterIdx: 0, offset: new THREE.Vector3(-25,  -8, -22) },
+        { text: '教えて',   clusterIdx: 0, offset: new THREE.Vector3(  8,  28,   0) }
+    ];
+
+    // 確率的生成の単語シーケンス（次単語予測）
+    // probs は各候補の選択確率（合計1.0）。chosen は最も確率の高い候補。
+    const responseSteps = [
+        { chosen: '保険', candidates: ['保険', '契約', '事務'],     probs: [0.68, 0.21, 0.11] },
+        { chosen: '契約', candidates: ['契約', '加入', '更新'],     probs: [0.55, 0.28, 0.17] },
+        { chosen: 'に',   candidates: ['に', 'の', 'を'],           probs: [0.62, 0.23, 0.15] },
+        { chosen: '必要', candidates: ['必要', '関する', 'おける'], probs: [0.49, 0.31, 0.20] },
+        { chosen: 'な',   candidates: ['な', 'で', 'と'],           probs: [0.71, 0.18, 0.11] },
+        { chosen: '書類', candidates: ['書類', '手順', '情報'],     probs: [0.46, 0.33, 0.21] },
+        { chosen: 'は',   candidates: ['は', 'を', 'が'],           probs: [0.64, 0.22, 0.14] },
+        { chosen: '以下', candidates: ['以下', '次', '下記'],       probs: [0.52, 0.27, 0.21] },
+        { chosen: 'の',   candidates: ['の', 'に', 'と'],           probs: [0.70, 0.19, 0.11] },
+        { chosen: '通り', candidates: ['通り', '内容', 'ファイル'], probs: [0.58, 0.26, 0.16] }
+    ];
+
+    init();
+    animate();
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x020617, 280, 650);
+
+        camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(160, 105, 195);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.35;
+
+        document.getElementById('rotateToggle').addEventListener('change', (e) => {
+            controls.autoRotate = e.target.checked;
+        });
+
+        // グリッド（淡め）
+        const grid = new THREE.GridHelper(420, 42, 0x1e293b, 0x0a1224);
+        grid.material.transparent = true;
+        grid.material.opacity = 0.5;
+        scene.add(grid);
+
+        // 中心軸の微かな発光
+        const axisGlow = new THREE.Mesh(
+            new THREE.SphereGeometry(2, 16, 16),
+            new THREE.MeshBasicMaterial({ color: 0x1e3a8a, transparent: true, opacity: 0.15 })
+        );
+        scene.add(axisGlow);
+
+        // パーティクル
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(numPoints * 3);
+        const colors = new Float32Array(numPoints * 3);
+        const sizes = new Float32Array(numPoints);
+
+        for (let i = 0; i < numPoints; i++) {
+            const clusterIdx = i % clusters.length;
+            const cluster = clusters[clusterIdx];
+            const startX = (Math.random() - 0.5) * 320;
+            const startY = (Math.random() - 0.5) * 320;
+            const startZ = (Math.random() - 0.5) * 320;
+
+            const r = Math.pow(Math.random(), 0.55) * 50;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+
+            particles.push({
+                current: new THREE.Vector3(startX, startY, startZ),
+                random: new THREE.Vector3(startX, startY, startZ),
+                cluster: new THREE.Vector3(
+                    cluster.center.x + r * Math.sin(phi) * Math.cos(theta),
+                    cluster.center.y + r * Math.sin(phi) * Math.sin(theta),
+                    cluster.center.z + r * Math.cos(phi)
+                ),
+                color: new THREE.Color(0x55617a),
+                clusterColor: new THREE.Color(cluster.color),
+                clusterIndex: clusterIdx,
+                phase: Math.random() * Math.PI * 2
+            });
+
+            positions[i * 3] = startX;
+            positions[i * 3 + 1] = startY;
+            positions[i * 3 + 2] = startZ;
+            // 初期状態でもハッキリ見える、明るめのブルーグレー
+            colors[i * 3] = 0.33;
+            colors[i * 3 + 1] = 0.38;
+            colors[i * 3 + 2] = 0.48;
+            sizes[i] = 2.0;
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const pointTexture = makePointTexture();
+        pointsMesh = new THREE.Points(geometry, new THREE.PointsMaterial({
+            size: 3.6,
+            vertexColors: true,
+            transparent: true,
+            opacity: 1.0,
+            map: pointTexture,
+            alphaTest: 0.01,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+        }));
+        scene.add(pointsMesh);
+
+        // グループ
+        promptGroup = new THREE.Group();
+        responseGroup = new THREE.Group();
+        candidateGroup = new THREE.Group();
+        labelGroup = new THREE.Group();
+        floatWordGroup = new THREE.Group();
+        scene.add(promptGroup, responseGroup, candidateGroup, labelGroup, floatWordGroup);
+
+        // クラスターラベルを作成
+        clusters.forEach((c, idx) => {
+            const label = makeTextSprite(c.name, '#' + c.color.toString(16).padStart(6, '0'), 32, true);
+            label.position.copy(c.center);
+            label.position.y += 38;
+            label.userData = { clusterIdx: idx, baseY: c.center.y + 38, visible: false };
+            label.material.opacity = 0;
+            labelGroup.add(label);
+        });
+
+        // 初期状態で漂う「言葉」ラベルを作成
+        floatingWords.forEach((w, i) => {
+            const cluster = clusters[w.clusterIdx];
+            const colorHex = '#' + cluster.color.toString(16).padStart(6, '0');
+            const sprite = makeTextSprite(w.text, colorHex, 24, true);
+
+            // 無秩序な初期位置（広い空間にバラバラ）
+            const randomPos = new THREE.Vector3(
+                (Math.random() - 0.5) * 230,
+                (Math.random() - 0.5) * 200,
+                (Math.random() - 0.5) * 230
+            );
+            // ベクトル化後の位置（クラスター中心付近）
+            const r = Math.pow(Math.random(), 0.6) * 30;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            const clusterPos = new THREE.Vector3(
+                cluster.center.x + r * Math.sin(phi) * Math.cos(theta),
+                cluster.center.y + r * Math.sin(phi) * Math.sin(theta),
+                cluster.center.z + r * Math.cos(phi)
+            );
+
+            sprite.position.copy(randomPos);
+            sprite.material.opacity = 0;
+            sprite.userData = {
+                current: randomPos.clone(),
+                randomPos: randomPos.clone(),
+                clusterPos: clusterPos,
+                clusterIdx: w.clusterIdx,
+                phase: Math.random() * Math.PI * 2
+            };
+            floatWordGroup.add(sprite);
+        });
+    }
+
+    // 円形パーティクルテクスチャ生成
+    function makePointTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+        grad.addColorStop(0, 'rgba(255,255,255,1)');
+        grad.addColorStop(0.3, 'rgba(255,255,255,0.7)');
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 64, 64);
+        return new THREE.CanvasTexture(canvas);
+    }
+
+    // テキストSprite作成
+    function makeTextSprite(text, color, fontSize = 28, withBackground = true) {
+        const canvas = document.createElement('canvas');
+        const padding = 14;
+        const ctx = canvas.getContext('2d');
+        ctx.font = `bold ${fontSize}px "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif`;
+        const textWidth = ctx.measureText(text).width;
+        canvas.width = Math.max(textWidth + padding * 2, 80);
+        canvas.height = fontSize + padding * 2;
+
+        const ctx2 = canvas.getContext('2d');
+        if (withBackground) {
+            ctx2.fillStyle = 'rgba(2, 6, 23, 0.82)';
+            ctx2.strokeStyle = color;
+            ctx2.lineWidth = 2;
+            roundRect(ctx2, 1, 1, canvas.width - 2, canvas.height - 2, 8);
+            ctx2.fill();
+            ctx2.stroke();
+        }
+        ctx2.font = `bold ${fontSize}px "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif`;
+        ctx2.fillStyle = color;
+        ctx2.textAlign = 'center';
+        ctx2.textBaseline = 'middle';
+        ctx2.shadowColor = color;
+        ctx2.shadowBlur = 8;
+        ctx2.fillText(text, canvas.width / 2, canvas.height / 2);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.minFilter = THREE.LinearFilter;
+        const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+        const sprite = new THREE.Sprite(material);
+        const scale = 0.18;
+        sprite.scale.set(canvas.width * scale, canvas.height * scale, 1);
+        sprite.renderOrder = 999;
+        return sprite;
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+    }
+
+    // トークン球体（単語ノード）を作成
+    function makeTokenNode(text, color, position) {
+        const group = new THREE.Group();
+        // コア球体
+        const sphere = new THREE.Mesh(
+            new THREE.SphereGeometry(1.6, 24, 24),
+            new THREE.MeshBasicMaterial({ color: color })
+        );
+        group.add(sphere);
+        // 外側のグロー
+        const glow = new THREE.Mesh(
+            new THREE.SphereGeometry(3.2, 24, 24),
+            new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending })
+        );
+        group.add(glow);
+        // ラベル
+        const colorHex = '#' + color.toString(16).padStart(6, '0');
+        const label = makeTextSprite(text, colorHex, 26, true);
+        label.position.y = 6;
+        group.add(label);
+        group.position.copy(position);
+        group.userData = { sphere, glow, label, baseScale: 1 };
+        return group;
+    }
+
+    // チューブ状の線（太い軌跡）
+    function makeTubeLine(points, color, radius = 0.4, opacity = 0.85) {
+        if (points.length < 2) return null;
+        const curve = new THREE.CatmullRomCurve3(points);
+        const tubeGeo = new THREE.TubeGeometry(curve, points.length * 8, radius, 8, false);
+        const tubeMat = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: opacity,
+            blending: THREE.AdditiveBlending
+        });
+        return new THREE.Mesh(tubeGeo, tubeMat);
+    }
+
+    // 細い候補線
+    function makeCandidateLine(start, end, color, opacity = 0.3) {
+        const geo = new THREE.BufferGeometry().setFromPoints([start, end]);
+        const mat = new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: opacity });
+        return new THREE.Line(geo, mat);
+    }
+
+    // 候補ノード（小さな発光する球）── サンプリング中の巡回ハイライト用
+    function makeCandidateDot(position, color) {
+        const mesh = new THREE.Mesh(
+            new THREE.SphereGeometry(1.3, 16, 16),
+            new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending })
+        );
+        mesh.position.copy(position);
+        mesh.userData.baseScale = 1;
+        return mesh;
+    }
+
+    function setCandidateDotColor(dot, color, scale) {
+        dot.material.color.setHex(color);
+        dot.scale.set(scale, scale, scale);
+    }
+
+    function fadeOutDot(dot, duration) {
+        const startTime = performance.now();
+        const startOp = dot.material.opacity;
+        function tick() {
+            const t = Math.min((performance.now() - startTime) / duration, 1);
+            dot.material.opacity = startOp * (1 - t);
+            dot.scale.multiplyScalar(1); // keep
+            if (t < 1) requestAnimationFrame(tick);
+        }
+        tick();
+    }
+
+    // 確率%付きの候補ラベル（例：「契約  28%」）
+    function makeProbLabel(text, prob, color) {
+        const pct = Math.round(prob * 100) + '%';
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const fontSize = 22;
+        const probFontSize = 16;
+        ctx.font = `bold ${fontSize}px "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif`;
+        const wordW = ctx.measureText(text).width;
+        ctx.font = `bold ${probFontSize}px "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif`;
+        const probW = ctx.measureText(pct).width;
+        const padding = 14;
+        const gap = 10;
+        canvas.width = Math.max(wordW + gap + probW + padding * 2, 90);
+        canvas.height = fontSize + padding * 2;
+
+        const c2 = canvas.getContext('2d');
+        // 背景
+        c2.fillStyle = 'rgba(2, 6, 23, 0.85)';
+        c2.strokeStyle = color;
+        c2.lineWidth = 2;
+        roundRect(c2, 1, 1, canvas.width - 2, canvas.height - 2, 8);
+        c2.fill();
+        c2.stroke();
+        // 単語
+        c2.textBaseline = 'middle';
+        c2.font = `bold ${fontSize}px "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif`;
+        c2.fillStyle = color;
+        c2.textAlign = 'left';
+        c2.shadowColor = color;
+        c2.shadowBlur = 6;
+        c2.fillText(text, padding, canvas.height / 2);
+        // 確率（やや明るい黄系で強調）
+        c2.font = `bold ${probFontSize}px "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif`;
+        c2.fillStyle = '#fcd34d';
+        c2.shadowColor = '#fcd34d';
+        c2.fillText(pct, padding + wordW + gap, canvas.height / 2 + 1);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.minFilter = THREE.LinearFilter;
+        const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+        const sprite = new THREE.Sprite(material);
+        const scale = 0.18;
+        sprite.scale.set(canvas.width * scale, canvas.height * scale, 1);
+        sprite.renderOrder = 999;
+        return sprite;
+    }
+
+    function clearGroup(group) {
+        while (group.children.length > 0) {
+            const child = group.children[0];
+            group.remove(child);
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                else child.material.dispose();
+            }
+        }
+    }
+
+    let promptPathPoints = []; // 軌跡の点列
+    let subtitlePromptWords = []; // 字幕：プロンプト確定単語
+    let subtitleResponseWords = []; // 字幕：回答確定単語
+
+    // 字幕の表示制御
+    function showSubtitle() {
+        document.getElementById('subtitle').classList.add('visible');
+    }
+    function hideSubtitle() {
+        document.getElementById('subtitle').classList.remove('visible');
+    }
+    function clearSubtitle() {
+        subtitlePromptWords = [];
+        subtitleResponseWords = [];
+        renderSubtitle();
+    }
+    function addPromptWord(word) {
+        subtitlePromptWords.push(word);
+        renderSubtitle(true, false);
+    }
+    function addResponseWord(word) {
+        subtitleResponseWords.push(word);
+        renderSubtitle(false, true);
+    }
+    function renderSubtitle(highlightLastPrompt = false, highlightLastResponse = false) {
+        const content = document.getElementById('subtitle-content');
+        let html = '';
+
+        if (subtitlePromptWords.length > 0) {
+            html += '<span class="prompt-text">';
+            html += '「';
+            subtitlePromptWords.forEach((w, i) => {
+                const isLast = i === subtitlePromptWords.length - 1;
+                if (isLast && highlightLastPrompt) {
+                    html += `<span class="new-word">${w}</span>`;
+                } else {
+                    html += w;
+                }
+            });
+            html += '」';
+            html += '</span>';
+        }
+
+        if (subtitleResponseWords.length > 0) {
+            html += '<span class="arrow">▶</span>';
+            html += '<span class="response-text">';
+            subtitleResponseWords.forEach((w, i) => {
+                const isLast = i === subtitleResponseWords.length - 1;
+                if (isLast && highlightLastResponse) {
+                    html += `<span class="new-word">${w}</span>`;
+                } else {
+                    html += w;
+                }
+            });
+            html += '</span>';
+        }
+
+        content.innerHTML = html;
+    }
+
+    async function runStep(step) {
+        const previousStep = currentStep;
+        animationToken++;
+        const token = animationToken;
+        currentStep = step;
+
+        const desc = document.getElementById('description');
+        for (let i = 0; i <= 3; i++) {
+            document.getElementById('btn' + i).className = (i === step) ? 'active' : '';
+        }
+
+        // ステップ3に「ステップ2の続き」として進む場合はプロンプト軌跡を保持
+        const keepPrompt = (step === 3 && previousStep === 2 && promptGroup.children.length > 0);
+
+        if (!keepPrompt) {
+            clearGroup(promptGroup);
+            promptPathPoints = [];
+        }
+        clearGroup(responseGroup);
+        clearGroup(candidateGroup);
+
+        // 字幕の制御
+        if (step === 0 || step === 1) {
+            hideSubtitle();
+            clearSubtitle();
+        } else if (step === 2) {
+            clearSubtitle();
+            showSubtitle();
+        } else if (step === 3) {
+            if (!keepPrompt) clearSubtitle();
+            // ステップ2から続けて来た場合はプロンプト字幕を保持
+            // 回答単語だけクリア
+            if (keepPrompt) {
+                subtitleResponseWords = [];
+                renderSubtitle();
+            }
+            showSubtitle();
+        }
+
+        if (step === 0) {
+            desc.innerHTML = '<b>初期状態：</b>「保険」「医療」「手続き」「料理」…といった代表的な<b>言葉</b>が、何の関連性も持たず空間にバラバラに漂っています。コンピューターにとっては、まだ意味のない記号の集まりです。';
+        } else if (step === 1) {
+            desc.innerHTML = '<b>ベクトル化：</b>学習を通じて、意味の近い単語同士が空間内で近くに集まります。「保険」「医療」「事務手続き」「その他」といった意味のクラスター（地図）が形成され、初めて意味の計算が可能になります。';
+        } else if (step === 2) {
+            desc.innerHTML = '<b>プロンプト入力：</b>AIが「保険について手続きを教えて」という文章を順に読み解き、各単語をベクトル空間に配置します。アテンション機構により、文脈が「保険（青）」のエリア内で構築されていきます。';
+            await animatePromptTrajectory(token);
+        } else if (step === 3) {
+            desc.innerHTML = '<b>確率的サンプリング：</b>青の文脈を起点に、AIは「次に来る単語」の候補を確率付きで複数挙げます（例：契約68%／加入21%…）。候補を巡回しながら、統計的に「もっともらしい」一語を確率的に選び、緑の「事務手続き」エリア内で回答を紡いでいきます。<b>毎回同じ結果になるとは限りません。</b>';
+            if (!keepPrompt) {
+                await animatePromptTrajectory(token);
+                if (token !== animationToken) return;
+                await new Promise(r => setTimeout(r, 300));
+            } else {
+                await new Promise(r => setTimeout(r, 200));
+            }
+            if (token !== animationToken) return;
+            await animateResponseGeneration(token);
+        }
+    }
+
+    async function animatePromptTrajectory(token) {
+        // 開始位置は青クラスターの少し外側
+        const blueCenter = clusters[PROMPT_CLUSTER].center;
+        const startPoint = blueCenter.clone().add(new THREE.Vector3(25, 25, 20));
+        promptPathPoints = [startPoint];
+
+        // 開始マーカー
+        const startMarker = makeTokenNode('入力', 0xffffff, startPoint);
+        startMarker.userData.label.scale.multiplyScalar(0.85);
+        promptGroup.add(startMarker);
+        await new Promise(r => setTimeout(r, 300));
+        if (token !== animationToken) return;
+
+        for (let i = 0; i < promptWords.length; i++) {
+            if (token !== animationToken) return;
+            const word = promptWords[i];
+            const cluster = clusters[word.clusterIdx];
+            const pos = cluster.center.clone().add(word.offset);
+
+            promptPathPoints.push(pos);
+
+            // 軌跡のチューブを更新
+            clearChildrenOfType(promptGroup, 'tube');
+            const tube = makeTubeLine(promptPathPoints, 0x38bdf8, 0.45, 0.9);
+            if (tube) {
+                tube.userData.type = 'tube';
+                promptGroup.add(tube);
+            }
+
+            // トークンノードを追加
+            const node = makeTokenNode(word.text, 0x38bdf8, pos);
+            // 出現アニメ
+            node.scale.set(0.01, 0.01, 0.01);
+            promptGroup.add(node);
+            // 字幕にも追加
+            addPromptWord(word.text);
+            await animateScale(node, 1, 350, token);
+            if (token !== animationToken) return;
+            await new Promise(r => setTimeout(r, 200));
+        }
+    }
+
+    function clearChildrenOfType(group, type) {
+        const toRemove = group.children.filter(c => c.userData.type === type);
+        toRemove.forEach(c => {
+            group.remove(c);
+            if (c.geometry) c.geometry.dispose();
+            if (c.material) c.material.dispose();
+        });
+    }
+
+    async function animateScale(obj, target, duration, token) {
+        const start = obj.scale.x;
+        const startTime = performance.now();
+        return new Promise(resolve => {
+            function tick() {
+                if (token !== animationToken) { resolve(); return; }
+                const elapsed = performance.now() - startTime;
+                const t = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - t, 3);
+                const s = start + (target - start) * eased;
+                obj.scale.set(s, s, s);
+                if (t < 1) requestAnimationFrame(tick);
+                else resolve();
+            }
+            tick();
+        });
+    }
+
+    async function animateResponseGeneration(token) {
+        if (promptPathPoints.length === 0) return;
+
+        const promptEnd = promptPathPoints[promptPathPoints.length - 1].clone();
+        const targetCluster = clusters[TARGET_CLUSTER];
+
+        // 青の最終点 → 緑エリア内入口への橋渡しトークン
+        // 緑クラスター内部（中心から手前25くらいの位置）を「生成開始点」とする
+        const bridgeDir = targetCluster.center.clone().sub(promptEnd).normalize();
+        const bridgeEnd = targetCluster.center.clone().sub(bridgeDir.multiplyScalar(28));
+
+        const responsePoints = [promptEnd.clone(), bridgeEnd.clone()];
+
+        // 橋渡しのチューブ（青→緑のグラデーション風に緑で表示）
+        const bridgeTube = makeTubeLine(responsePoints, 0x6ee7b7, 0.5, 0.85);
+        if (bridgeTube) {
+            bridgeTube.userData.type = 'tube';
+            responseGroup.add(bridgeTube);
+        }
+
+        // 「生成開始」マーカー
+        const bridgeMarker = makeTokenNode('生成開始', 0x6ee7b7, bridgeEnd);
+        bridgeMarker.scale.set(0.01, 0.01, 0.01);
+        responseGroup.add(bridgeMarker);
+        await animateScale(bridgeMarker, 1, 400, token);
+        if (token !== animationToken) return;
+        await new Promise(r => setTimeout(r, 250));
+
+        let currentPos = bridgeEnd.clone();
+        // 確定済み単語の位置（橋渡し2点も含めて重なり回避の基準にする）
+        const placedPositions = [promptEnd.clone(), bridgeEnd.clone()];
+        const MIN_WORD_DIST = 11; // 単語同士の最小距離
+
+        for (let i = 0; i < responseSteps.length; i++) {
+            if (token !== animationToken) return;
+            const stepData = responseSteps[i];
+
+            // 候補位置を生成（緑クラスター中心からの絶対距離で制約：ほぼ緑内に収める）
+            // 既に配置済みの単語とは MIN_WORD_DIST 以上離す
+            const candidatePositions = stepData.candidates.map((_, idx) => {
+                let candidate = null;
+                // 最大30回試行して、他の単語と被らない位置を探す
+                for (let attempt = 0; attempt < 30; attempt++) {
+                    const u = Math.random();
+                    const biased = Math.pow(u, 1.4); // 中心寄りバイアス（やや広め）
+                    // 通常は半径35以内、ごく稀に端（最大42）まで広がる
+                    const radius = biased * 35 + (Math.random() < 0.08 ? Math.random() * 7 : 0);
+
+                    // 球面上のランダム方向
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.acos(2 * Math.random() - 1);
+                    const offset = new THREE.Vector3(
+                        radius * Math.sin(phi) * Math.cos(theta),
+                        radius * Math.sin(phi) * Math.sin(theta),
+                        radius * Math.cos(phi)
+                    );
+                    candidate = targetCluster.center.clone().add(offset);
+
+                    // 既存単語と重ならないかチェック
+                    let ok = true;
+                    for (const p of placedPositions) {
+                        if (candidate.distanceTo(p) < MIN_WORD_DIST) {
+                            ok = false; break;
+                        }
+                    }
+                    if (ok) break;
+                }
+                return candidate;
+            });
+
+            // 候補線とラベルを表示
+            const candidateLines = [];
+            const candidateLabels = [];
+            const candidateNodes = [];
+            const probabilities = stepData.probs || [0.7, 0.2, 0.1];
+
+            for (let c = 0; c < stepData.candidates.length; c++) {
+                if (token !== animationToken) return;
+                const opacity = probabilities[c] * 0.7 + 0.25;
+
+                // 候補線（確率が高いほど明るい）── 最初は中立色（灰）
+                const line = makeCandidateLine(currentPos, candidatePositions[c], 0x64748b, opacity);
+                candidateGroup.add(line);
+                candidateLines.push(line);
+
+                // 候補ノード（小さな球）── サンプリング中に色が変わる
+                const cnode = makeCandidateDot(candidatePositions[c], 0x94a3b8);
+                candidateGroup.add(cnode);
+                candidateNodes.push(cnode);
+
+                // 候補ラベル（単語＋確率%）
+                const label = makeProbLabel(stepData.candidates[c], probabilities[c], '#cbd5e1');
+                label.position.copy(candidatePositions[c]);
+                label.position.y += 5;
+                label.material.opacity = opacity;
+                candidateGroup.add(label);
+                candidateLabels.push(label);
+            }
+
+            // 候補が出そろうまで待つ
+            await new Promise(r => setTimeout(r, 400));
+            if (token !== animationToken) return;
+
+            // ── 確率的サンプリングの演出：候補を巡回ハイライト（ルーレットのように） ──
+            const chosenIdxForHl = stepData.candidates.indexOf(stepData.chosen);
+            const spins = 9 + chosenIdxForHl; // 最終的に chosen で止まるよう回数調整
+            for (let s = 0; s < spins; s++) {
+                if (token !== animationToken) return;
+                const hl = s % stepData.candidates.length;
+                for (let c = 0; c < candidateNodes.length; c++) {
+                    const on = (c === hl);
+                    setCandidateDotColor(candidateNodes[c], on ? 0xfbbf24 : 0x94a3b8, on ? 1.7 : 1.0);
+                    candidateLabels[c].material.opacity = on ? 1.0 : 0.45;
+                }
+                // 終盤は減速させる（サンプリングが収束する感じ）
+                const delay = 70 + Math.floor(s / 3) * 55;
+                await new Promise(r => setTimeout(r, delay));
+            }
+            if (token !== animationToken) return;
+
+            // 巡回が chosen で止まる
+            const chosenIdx = chosenIdxForHl;
+            for (let c = 0; c < candidateNodes.length; c++) {
+                const isChosen = (c === chosenIdx);
+                setCandidateDotColor(candidateNodes[c], isChosen ? 0x6ee7b7 : 0x475569, isChosen ? 2.0 : 1.0);
+                candidateLabels[c].material.opacity = isChosen ? 1.0 : 0.3;
+                // 選ばれた線を緑に光らせる
+                if (isChosen) {
+                    candidateLines[c].material.color.setHex(0x6ee7b7);
+                    candidateLines[c].material.opacity = 0.95;
+                }
+            }
+            await new Promise(r => setTimeout(r, 500));
+            if (token !== animationToken) return;
+
+            // 選ばれなかった候補をフェードアウト
+            for (let c = 0; c < stepData.candidates.length; c++) {
+                if (c !== chosenIdx) {
+                    fadeOut(candidateLines[c], 300);
+                    fadeOut(candidateLabels[c], 300);
+                    fadeOutDot(candidateNodes[c], 300);
+                }
+            }
+            await new Promise(r => setTimeout(r, 300));
+            if (token !== animationToken) return;
+
+            // 選ばれた位置に進む
+            const chosenPos = candidatePositions[chosenIdx];
+            responsePoints.push(chosenPos.clone());
+            placedPositions.push(chosenPos.clone()); // 以降の重なり回避基準に追加
+            // 字幕にも追加
+            addResponseWord(stepData.chosen);
+
+            // 確定トークン
+            const node = makeTokenNode(stepData.chosen, 0x10b981, chosenPos);
+            node.scale.set(0.01, 0.01, 0.01);
+            responseGroup.add(node);
+            animateScale(node, 1, 250, token);
+
+            // 軌跡更新
+            clearChildrenOfType(responseGroup, 'tube');
+            const tube = makeTubeLine(responsePoints, 0x10b981, 0.5, 0.95);
+            if (tube) {
+                tube.userData.type = 'tube';
+                responseGroup.add(tube);
+            }
+
+            // 残った候補要素もクリア
+            await new Promise(r => setTimeout(r, 200));
+            clearGroup(candidateGroup);
+            currentPos = chosenPos;
+        }
+    }
+
+    function fadeOut(obj, duration) {
+        const startTime = performance.now();
+        const startOp = obj.material.opacity;
+        function tick() {
+            const t = Math.min((performance.now() - startTime) / duration, 1);
+            obj.material.opacity = startOp * (1 - t);
+            if (t < 1) requestAnimationFrame(tick);
+        }
+        tick();
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const time = performance.now() * 0.001;
+        const pos = pointsMesh.geometry.attributes.position.array;
+        const cols = pointsMesh.geometry.attributes.color.array;
+
+        particles.forEach((p, i) => {
+            const target = (currentStep >= 1) ? p.cluster : p.random;
+            const lerpRate = (currentStep >= 1) ? 0.045 : 0.025;
+            p.current.lerp(target, lerpRate);
+
+            // 微細なゆらぎ
+            const jitter = (currentStep >= 1) ? 0.15 : 0;
+            const jx = Math.sin(time + p.phase) * jitter;
+            const jy = Math.cos(time * 1.2 + p.phase) * jitter;
+
+            pos[i * 3] = p.current.x + jx;
+            pos[i * 3 + 1] = p.current.y + jy;
+            pos[i * 3 + 2] = p.current.z;
+
+            // 色の決定
+            let targetCol;
+            if (currentStep === 0) {
+                targetCol = new THREE.Color(0x55617a);
+            } else if (currentStep === 1) {
+                targetCol = p.clusterColor;
+            } else if (currentStep === 2) {
+                // ステップ2：青（PROMPT_CLUSTER）だけハイライト、他は暗く
+                if (p.clusterIndex === PROMPT_CLUSTER) {
+                    const pulse = 0.85 + Math.sin(time * 1.5 + p.phase) * 0.15;
+                    targetCol = new THREE.Color(0x7dd3fc).multiplyScalar(pulse);
+                } else {
+                    targetCol = p.clusterColor.clone().multiplyScalar(0.18);
+                }
+            } else {
+                // ステップ3：青も緑も両方ハイライト（青=文脈、緑=生成領域）
+                if (p.clusterIndex === PROMPT_CLUSTER) {
+                    // 青はやや控えめ（文脈は既に確立済み）
+                    targetCol = new THREE.Color(0x7dd3fc).multiplyScalar(0.6);
+                } else if (p.clusterIndex === TARGET_CLUSTER) {
+                    // 緑を脈動させる（生成中の領域）
+                    const pulse = 0.85 + Math.sin(time * 1.5 + p.phase) * 0.15;
+                    targetCol = new THREE.Color(0x6ee7b7).multiplyScalar(pulse);
+                } else {
+                    targetCol = p.clusterColor.clone().multiplyScalar(0.15);
+                }
+            }
+
+            p.color.lerp(targetCol, 0.05);
+            cols[i * 3] = p.color.r;
+            cols[i * 3 + 1] = p.color.g;
+            cols[i * 3 + 2] = p.color.b;
+        });
+
+        pointsMesh.geometry.attributes.position.needsUpdate = true;
+        pointsMesh.geometry.attributes.color.needsUpdate = true;
+
+        // クラスターラベルの表示制御
+        labelGroup.children.forEach(label => {
+            const idx = label.userData.clusterIdx;
+            let targetOpacity = 0;
+            if (currentStep === 1) {
+                targetOpacity = 1.0;
+            } else if (currentStep === 2) {
+                targetOpacity = (idx === PROMPT_CLUSTER) ? 1.0 : 0.25;
+            } else if (currentStep === 3) {
+                if (idx === PROMPT_CLUSTER || idx === TARGET_CLUSTER) targetOpacity = 1.0;
+                else targetOpacity = 0.2;
+            }
+            label.material.opacity += (targetOpacity - label.material.opacity) * 0.05;
+            // ふわふわ上下に揺らす
+            label.position.y = label.userData.baseY + Math.sin(time + idx) * 1.5;
+        });
+
+        // 漂う「言葉」ラベルの制御
+        floatWordGroup.children.forEach((sprite, i) => {
+            const ud = sprite.userData;
+            // 目標位置：ステップ0は無秩序、ステップ1以降はクラスター内へ収束
+            const target = (currentStep >= 1) ? ud.clusterPos : ud.randomPos;
+            const lerpRate = (currentStep >= 1) ? 0.04 : 0.02;
+            ud.current.lerp(target, lerpRate);
+
+            // ゆっくりとした漂い（初期状態ほど大きく漂わせる）
+            const driftAmp = (currentStep === 0) ? 4.5 : 1.2;
+            const dx = Math.sin(time * 0.5 + ud.phase) * driftAmp;
+            const dy = Math.cos(time * 0.4 + ud.phase * 1.3) * driftAmp;
+            const dz = Math.sin(time * 0.45 + ud.phase * 0.7) * driftAmp;
+            sprite.position.set(ud.current.x + dx, ud.current.y + dy, ud.current.z + dz);
+
+            // 不透明度：ステップ0/1で表示、2以降は対象クラスター以外を抑える
+            let targetOp = 0;
+            if (currentStep === 0) {
+                targetOp = 0.92;
+            } else if (currentStep === 1) {
+                targetOp = 0.95;
+            } else if (currentStep === 2) {
+                targetOp = (ud.clusterIdx === PROMPT_CLUSTER) ? 0.5 : 0.0;
+            } else if (currentStep === 3) {
+                // 生成中はトークンノードと重ならないよう、漂うラベルは消す
+                targetOp = 0.0;
+            }
+            sprite.material.opacity += (targetOp - sprite.material.opacity) * 0.06;
+        });
+
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+</script>
+
+</body>
+</html>
