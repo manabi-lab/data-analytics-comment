@@ -4,9 +4,40 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>住宅月額家賃 予測モデル｜説明変数カタログ</title>
+<title>住宅 月額家賃 予測モデル｜総合リファレンス</title>
 <style>
-  :root{
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic',Meiryo,sans-serif;background:#2b2b28;-webkit-font-smoothing:antialiased;}
+/* ---- top tab bar ---- */
+.tabbar-outer{position:sticky;top:0;z-index:100;background:rgba(26,26,24,.92);backdrop-filter:blur(8px);border-bottom:1px solid rgba(255,255,255,.12);}
+.tabbar{max-width:980px;margin:0 auto;padding:0 18px;display:flex;align-items:stretch;gap:2px;}
+.brandtab{display:flex;align-items:center;font-family:'Yu Mincho','Hiragino Mincho ProN',serif;color:#f3ead9;font-size:15px;font-weight:600;padding:14px 16px 14px 0;margin-right:6px;letter-spacing:.02em;white-space:nowrap;border-right:1px solid rgba(255,255,255,.13);}
+.brandtab .sub{font-family:inherit;font-size:10.5px;color:#9a948a;letter-spacing:.18em;margin-left:10px;text-transform:uppercase;}
+.tabs{display:flex;gap:2px;overflow-x:auto;}
+.tab{appearance:none;border:none;background:transparent;color:#b8b2a6;font-family:inherit;font-size:13.5px;font-weight:700;padding:0 17px;cursor:pointer;position:relative;white-space:nowrap;letter-spacing:.01em;transition:color .15s;display:flex;align-items:center;gap:8px;min-height:50px;}
+.tab .tno{font-family:'SFMono-Regular',Consolas,monospace;font-size:11px;color:#6f6a60;font-weight:700;transition:color .15s;}
+.tab:hover{color:#f0ebe0;}
+.tab[aria-selected="true"]{color:#fff;}
+.tab[aria-selected="true"] .tno{color:#d9a441;}
+.tab[aria-selected="true"]::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:3px;background:#d9a441;border-radius:3px 3px 0 0;}
+.tab:focus-visible{outline:2px solid #d9a441;outline-offset:-3px;border-radius:4px;}
+/* ---- panels ---- */
+.panel{display:none;min-height:100vh;}
+.panel.active{display:block;animation:fade .35s ease;}
+@keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+#panel-features{background:#f6f4ef;}
+#panel-sources{background:#f3f1ea;}
+#panel-niche{background:#f4f0e8;}
+
+@media(max-width:620px){
+  .brandtab .sub{display:none;}
+  .brandtab{font-size:13px;padding-right:10px;margin-right:4px;}
+  .tab{padding:0 12px;font-size:12.5px;}
+}
+
+#panel-features{
     --ink:#1a1d24;
     --ink-soft:#4a4f5c;
     --paper:#f6f4ef;
@@ -21,9 +52,9 @@
     --rose-soft:#f3e3e6;
     --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
   }
-  *{box-sizing:border-box;}
-  html{scroll-behavior:smooth;}
-  body{
+#panel-features *{box-sizing:border-box;}
+#panel-features{scroll-behavior:smooth;}
+#panel-features{
     margin:0;
     background:var(--paper);
     color:var(--ink);
@@ -32,150 +63,329 @@
     font-feature-settings:"palt";
     -webkit-font-smoothing:antialiased;
   }
-  .wrap{max-width:960px;margin:0 auto;padding:0 24px;}
-
-  /* ---- header ---- */
+#panel-features .wrap{max-width:960px;margin:0 auto;padding:0 24px;}
+#panel-features /* ---- header ---- */
   header.hero{
     padding:64px 0 40px;
     border-bottom:2px solid var(--ink);
   }
-  .eyebrow{
+#panel-features .eyebrow{
     font-size:12px;letter-spacing:.32em;color:var(--accent);
     font-weight:700;margin:0 0 18px;text-transform:uppercase;
   }
-  h1{
+#panel-features h1{
     font-family:'Yu Mincho','Hiragino Mincho ProN',serif;
     font-size:clamp(30px,5vw,46px);
     line-height:1.3;font-weight:600;margin:0 0 20px;letter-spacing:.01em;
   }
-  .lead{font-size:16px;color:var(--ink-soft);max-width:680px;margin:0;}
-  .meta{
+#panel-features .lead{font-size:16px;color:var(--ink-soft);max-width:680px;margin:0;}
+#panel-features .meta{
     margin-top:28px;display:flex;flex-wrap:wrap;gap:8px 20px;
     font-size:12.5px;color:var(--ink-soft);
   }
-  .meta span{display:inline-flex;align-items:center;gap:6px;}
-  .meta b{color:var(--accent);font-weight:700;}
-
-  /* ---- legend ---- */
+#panel-features .meta span{display:inline-flex;align-items:center;gap:6px;}
+#panel-features .meta b{color:var(--accent);font-weight:700;}
+#panel-features /* ---- legend ---- */
   .legend{
     margin:36px 0 8px;display:flex;flex-wrap:wrap;gap:10px;
   }
-  .chip{
+#panel-features .chip{
     display:inline-flex;align-items:center;gap:7px;
     font-size:12.5px;padding:6px 13px;border-radius:999px;
     border:1px solid var(--line);background:var(--card);font-weight:600;
   }
-  .dot{width:9px;height:9px;border-radius:50%;flex:none;}
-  .d-base{background:var(--accent);}
-  .d-cut{background:var(--rose);}
-  .d-prem{background:var(--gold);}
-  .d-soft{background:#6a5acd;}
-
-  /* ---- nav ---- */
+#panel-features .dot{width:9px;height:9px;border-radius:50%;flex:none;}
+#panel-features .d-base{background:var(--accent);}
+#panel-features .d-cut{background:var(--rose);}
+#panel-features .d-prem{background:var(--gold);}
+#panel-features .d-soft{background:#6a5acd;}
+#panel-features /* ---- nav ---- */
   nav.toc{
     margin:40px 0 8px;padding:22px 26px;
     background:var(--card);border:1px solid var(--line);border-radius:12px;
   }
-  nav.toc h2{
+#panel-features nav.toc h2{
     font-size:12px;letter-spacing:.2em;color:var(--ink-soft);
     margin:0 0 14px;font-weight:700;
   }
-  nav.toc ol{margin:0;padding:0;list-style:none;
+#panel-features nav.toc ol{margin:0;padding:0;list-style:none;
     display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:4px 22px;}
-  nav.toc a{
+#panel-features nav.toc a{
     display:flex;gap:11px;align-items:baseline;
     text-decoration:none;color:var(--ink);font-size:14px;
     padding:5px 0;border-bottom:1px dotted transparent;
   }
-  nav.toc a:hover{border-bottom-color:var(--rule);color:var(--accent);}
-  nav.toc .num{
+#panel-features nav.toc a:hover{border-bottom-color:var(--rule);color:var(--accent);}
+#panel-features nav.toc .num{
     font-family:var(--mono);font-size:12px;color:var(--accent);
     font-weight:700;flex:none;width:24px;
   }
-
-  /* ---- section ---- */
+#panel-features /* ---- section ---- */
   section.cat{margin:52px 0 0;scroll-margin-top:20px;}
-  .cat-head{display:flex;gap:18px;align-items:flex-start;margin-bottom:6px;}
-  .cat-num{
+#panel-features .cat-head{display:flex;gap:18px;align-items:flex-start;margin-bottom:6px;}
+#panel-features .cat-num{
     font-family:'Yu Mincho',serif;font-size:34px;line-height:1;
     color:var(--accent);font-weight:600;flex:none;width:54px;
     border-right:2px solid var(--rule);padding-right:14px;
   }
-  .cat-titles h3{font-size:20px;margin:2px 0 4px;font-weight:700;letter-spacing:.01em;}
-  .cat-titles .en{
+#panel-features .cat-titles h3{font-size:20px;margin:2px 0 4px;font-weight:700;letter-spacing:.01em;}
+#panel-features .cat-titles .en{
     font-size:11.5px;letter-spacing:.18em;color:var(--ink-soft);
     text-transform:uppercase;font-weight:600;
   }
-  .cat-note{
+#panel-features .cat-note{
     margin:14px 0 18px;padding:11px 16px;font-size:13.5px;color:var(--ink-soft);
     background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;
   }
-  .cat-note.prem{background:var(--gold-soft);border-left-color:var(--gold);}
-  .cat-note.cut{background:var(--rose-soft);border-left-color:var(--rose);}
-
-  /* variable grid */
+#panel-features .cat-note.prem{background:var(--gold-soft);border-left-color:var(--gold);}
+#panel-features .cat-note.cut{background:var(--rose-soft);border-left-color:var(--rose);}
+#panel-features /* variable grid */
   ul.vars{
     list-style:none;margin:0;padding:0;
     display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:7px;
   }
-  ul.vars li{
+#panel-features ul.vars li{
     background:var(--card);border:1px solid var(--line);border-radius:8px;
     padding:10px 13px;font-size:13.5px;position:relative;padding-left:26px;
   }
-  ul.vars li::before{
+#panel-features ul.vars li::before{
     content:"";position:absolute;left:11px;top:16px;
     width:6px;height:6px;border-radius:50%;background:var(--accent);
   }
-  ul.vars li.cut::before{background:var(--rose);}
-  ul.vars li.prem::before{background:var(--gold);}
-  ul.vars li.soft::before{background:#6a5acd;}
-  ul.vars li .hint{display:block;font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
-
-  .full{grid-column:1/-1;}
-
-  /* ---- modeling block ---- */
+#panel-features ul.vars li.cut::before{background:var(--rose);}
+#panel-features ul.vars li.prem::before{background:var(--gold);}
+#panel-features ul.vars li.soft::before{background:#6a5acd;}
+#panel-features ul.vars li .hint{display:block;font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+#panel-features .full{grid-column:1/-1;}
+#panel-features /* ---- modeling block ---- */
   .model{
     margin:60px 0 0;padding:34px 32px;border-radius:14px;
     background:var(--ink);color:#ece8df;
   }
-  .model .eyebrow{color:#8fc4b4;}
-  .model h3{
+#panel-features .model .eyebrow{color:#8fc4b4;}
+#panel-features .model h3{
     font-family:'Yu Mincho',serif;color:#fff;font-size:23px;
     margin:0 0 22px;font-weight:600;
   }
-  .model h4{font-size:15px;color:#f0c97a;margin:24px 0 8px;font-weight:700;}
-  .model p{color:#cdc8bd;font-size:14px;margin:0 0 12px;}
-  .model ul{margin:8px 0 0;padding-left:20px;}
-  .model li{color:#cdc8bd;font-size:14px;margin-bottom:7px;}
-  .model strong{color:#fff;}
-
-  /* effect table */
+#panel-features .model h4{font-size:15px;color:#f0c97a;margin:24px 0 8px;font-weight:700;}
+#panel-features .model p{color:#cdc8bd;font-size:14px;margin:0 0 12px;}
+#panel-features .model ul{margin:8px 0 0;padding-left:20px;}
+#panel-features .model li{color:#cdc8bd;font-size:14px;margin-bottom:7px;}
+#panel-features .model strong{color:#fff;}
+#panel-features /* effect table */
   table{width:100%;border-collapse:collapse;margin:18px 0 0;font-size:13px;}
-  table th,table td{text-align:left;padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.13);}
-  table th{color:#8fc4b4;font-weight:700;font-size:11.5px;letter-spacing:.08em;}
-  table td{color:#d6d1c6;vertical-align:top;}
-  table td:first-child{color:#fff;font-weight:600;white-space:nowrap;}
-
-  /* ---- footer ---- */
+#panel-features table th, #panel-features table td{text-align:left;padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.13);}
+#panel-features table th{color:#8fc4b4;font-weight:700;font-size:11.5px;letter-spacing:.08em;}
+#panel-features table td{color:#d6d1c6;vertical-align:top;}
+#panel-features table td:first-child{color:#fff;font-weight:600;white-space:nowrap;}
+#panel-features /* ---- footer ---- */
   footer{
     margin:56px 0 60px;padding-top:22px;border-top:1px solid var(--rule);
     font-size:12px;color:var(--ink-soft);
   }
-  footer b{color:var(--ink);}
-
-  @media(max-width:560px){
-    .cat-num{font-size:26px;width:42px;padding-right:10px;}
-    .cat-head{gap:12px;}
-    header.hero{padding:44px 0 30px;}
-    ul.vars{grid-template-columns:1fr 1fr;}
+#panel-features footer b{color:var(--ink);}
+@media(max-width:560px){#panel-features .cat-num{font-size:26px;width:42px;padding-right:10px;}
+#panel-features .cat-head{gap:12px;}
+#panel-features header.hero{padding:44px 0 30px;}
+#panel-features ul.vars{grid-template-columns:1fr 1fr;}}
+@media(max-width:400px){#panel-features ul.vars{grid-template-columns:1fr;}}
+#panel-sources{
+    --ink:#16201c;
+    --ink-soft:#48564f;
+    --paper:#f3f1ea;
+    --card:#fffdf8;
+    --line:#dfe0d4;
+    --rule:#c6c9b8;
+    --accent:#2f6f5e;
+    --accent-soft:#e6efea;
+    --gov:#2f6f5e;        /* 公的オープンデータ */
+    --gov-soft:#e3efe9;
+    --portal:#b56a2e;     /* 民間ポータル */
+    --portal-soft:#f4e7d8;
+    --geo:#3a5b9c;        /* 地図・地理 */
+    --geo-soft:#e2e8f4;
+    --field:#8a4a6b;      /* 独自取得・現地 */
+    --field-soft:#f1e2ea;
+    --mono:'SFMono-Regular',Consolas,Menlo,monospace;
   }
-  @media(max-width:400px){
-    ul.vars{grid-template-columns:1fr;}
+#panel-sources *{box-sizing:border-box;}
+#panel-sources{scroll-behavior:smooth;}
+#panel-sources{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic',Meiryo,sans-serif;
+    line-height:1.75;font-feature-settings:"palt";-webkit-font-smoothing:antialiased;
   }
+#panel-sources .wrap{max-width:980px;margin:0 auto;padding:0 24px;}
+#panel-sources header.hero{padding:60px 0 36px;border-bottom:2px solid var(--ink);}
+#panel-sources .eyebrow{font-size:12px;letter-spacing:.3em;color:var(--accent);font-weight:700;margin:0 0 16px;text-transform:uppercase;}
+#panel-sources h1{font-family:'Yu Mincho','Hiragino Mincho ProN',serif;font-size:clamp(28px,4.6vw,44px);line-height:1.3;font-weight:600;margin:0 0 18px;}
+#panel-sources .lead{font-size:16px;color:var(--ink-soft);max-width:720px;margin:0;}
+#panel-sources .meta{margin-top:24px;display:flex;flex-wrap:wrap;gap:8px 20px;font-size:12.5px;color:var(--ink-soft);}
+#panel-sources .meta b{color:var(--accent);font-weight:700;}
+#panel-sources /* source-type legend */
+  .legend{margin:34px 0 4px;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;}
+#panel-sources .lg{padding:13px 15px;border-radius:10px;border:1px solid var(--line);background:var(--card);}
+#panel-sources .lg .tag{display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:13.5px;margin-bottom:3px;}
+#panel-sources .lg .sw{width:11px;height:11px;border-radius:3px;flex:none;}
+#panel-sources .lg p{margin:2px 0 0;font-size:12px;color:var(--ink-soft);line-height:1.55;}
+#panel-sources .sw-gov{background:var(--gov);}
+#panel-sources .sw-portal{background:var(--portal);}
+#panel-sources .sw-geo{background:var(--geo);}
+#panel-sources .sw-field{background:var(--field);}
+#panel-sources /* primary sources cards */
+  section{margin:50px 0 0;}
+#panel-sources h2.sec{font-family:'Yu Mincho',serif;font-size:24px;font-weight:600;margin:0 0 6px;letter-spacing:.01em;}
+#panel-sources .sec-sub{font-size:13.5px;color:var(--ink-soft);margin:0 0 22px;}
+#panel-sources .src{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:14px;border-left:4px solid var(--accent);}
+#panel-sources .src.gov{border-left-color:var(--gov);}
+#panel-sources .src.portal{border-left-color:var(--portal);}
+#panel-sources .src.geo{border-left-color:var(--geo);}
+#panel-sources .src.field{border-left-color:var(--field);}
+#panel-sources .src-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px;margin-bottom:8px;}
+#panel-sources .src-head h3{font-size:17px;margin:0;font-weight:700;}
+#panel-sources .src-head .by{font-size:12px;color:var(--ink-soft);}
+#panel-sources .badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.02em;}
+#panel-sources .b-free{background:var(--gov-soft);color:#1f5546;}
+#panel-sources .b-api{background:var(--geo-soft);color:#2c477c;}
+#panel-sources .b-paid{background:var(--portal-soft);color:#8a4e1f;}
+#panel-sources .b-care{background:var(--field-soft);color:#723a57;}
+#panel-sources .src p.desc{margin:0 0 10px;font-size:13.5px;color:var(--ink-soft);}
+#panel-sources .src .gives{font-size:12.5px;}
+#panel-sources .src .gives b{color:var(--accent);font-weight:700;}
+#panel-sources .src .url{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);margin-top:8px;word-break:break-all;}
+#panel-sources .src-link{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:12.5px;font-weight:700;text-decoration:none;color:var(--accent);border:1px solid var(--accent);border-radius:7px;padding:6px 13px;transition:background .15s,color .15s;}
+#panel-sources .src-link:hover{background:var(--accent);color:#fff;}
+#panel-sources .src-link .arr{font-size:11px;}
+#panel-sources .src.geo .src-link{color:var(--geo);border-color:var(--geo);}
+#panel-sources .src.geo .src-link:hover{background:var(--geo);color:#fff;}
+#panel-sources .src.portal .src-link{color:var(--portal);border-color:var(--portal);}
+#panel-sources .src.portal .src-link:hover{background:var(--portal);color:#fff;}
+#panel-sources .src.field .src-link{color:var(--field);border-color:var(--field);}
+#panel-sources .src.field .src-link:hover{background:var(--field);color:#fff;}
+#panel-sources .src-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+#panel-sources /* mapping table */
+  .map-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+#panel-sources .map-table th, #panel-sources .map-table td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+#panel-sources .map-table thead th{background:var(--accent);color:#fff;font-size:12px;letter-spacing:.04em;font-weight:700;}
+#panel-sources .map-table tbody tr:last-child td{border-bottom:none;}
+#panel-sources .map-table td:first-child{font-weight:700;white-space:nowrap;color:var(--ink);width:1%;}
+#panel-sources .map-table .cat-no{font-family:var(--mono);color:var(--accent);font-size:11.5px;}
+#panel-sources .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;margin:1px 3px 1px 0;white-space:nowrap;}
+#panel-sources .p-gov{background:var(--gov-soft);color:#1f5546;}
+#panel-sources .p-portal{background:var(--portal-soft);color:#8a4e1f;}
+#panel-sources .p-geo{background:var(--geo-soft);color:#2c477c;}
+#panel-sources .p-field{background:var(--field-soft);color:#723a57;}
+#panel-sources /* compliance box */
+  .note{margin:18px 0 0;padding:16px 20px;border-radius:10px;background:var(--portal-soft);border-left:4px solid var(--portal);font-size:13.5px;color:#5d3c1c;}
+#panel-sources .note b{color:#8a4e1f;}
+#panel-sources .note ul{margin:8px 0 0;padding-left:20px;}
+#panel-sources .note li{margin-bottom:5px;}
+#panel-sources /* workflow */
+  .flow{margin:50px 0 0;padding:30px 30px;border-radius:14px;background:var(--ink);color:#e9ebe5;}
+#panel-sources .flow .eyebrow{color:#8fc4b4;}
+#panel-sources .flow h2{font-family:'Yu Mincho',serif;color:#fff;font-size:23px;margin:0 0 20px;font-weight:600;}
+#panel-sources .step{display:flex;gap:16px;margin-bottom:16px;align-items:flex-start;}
+#panel-sources .step .n{font-family:'Yu Mincho',serif;font-size:24px;color:#7fc2af;font-weight:600;flex:none;width:30px;line-height:1.2;}
+#panel-sources .step .b h4{margin:0 0 3px;color:#fff;font-size:15px;font-weight:700;}
+#panel-sources .step .b p{margin:0;color:#c7ccc2;font-size:13.5px;}
+#panel-sources .flow .kick{margin:18px 0 0;font-size:13px;color:#aeb4a9;border-top:1px solid rgba(255,255,255,.15);padding-top:16px;}
+#panel-sources footer{margin:52px 0 60px;padding-top:20px;border-top:1px solid var(--rule);font-size:12px;color:var(--ink-soft);}
+#panel-sources footer b{color:var(--ink);}
+@media(max-width:560px){#panel-sources header.hero{padding:40px 0 28px;}
+#panel-sources .map-table{display:block;overflow-x:auto;white-space:nowrap;}}
+#panel-niche{
+    --ink:#1b1714;
+    --ink-soft:#544c45;
+    --paper:#f4f0e8;
+    --card:#fffdf7;
+    --line:#e2dbcd;
+    --rule:#cabfa9;
+    --accent:#9c4221;       /* 深い赤茶：注意・ニッチを示す */
+    --accent-soft:#f3e3d8;
+    --teal:#2f6f5e;         /* データあり */
+    --teal-soft:#e3efe9;
+    --amber:#a8791f;        /* 取得に工夫 */
+    --amber-soft:#f4ead2;
+    --plum:#7a4069;         /* 取得困難 */
+    --plum-soft:#f0e3ed;
+    --mono:'SFMono-Regular',Consolas,Menlo,monospace;
+  }
+#panel-niche *{box-sizing:border-box;}
+#panel-niche{scroll-behavior:smooth;}
+#panel-niche{margin:0;background:var(--paper);color:var(--ink);
+    font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic',Meiryo,sans-serif;
+    line-height:1.78;font-feature-settings:"palt";-webkit-font-smoothing:antialiased;}
+#panel-niche .wrap{max-width:940px;margin:0 auto;padding:0 24px;}
+#panel-niche header.hero{padding:60px 0 38px;border-bottom:3px double var(--rule);}
+#panel-niche .eyebrow{font-size:12px;letter-spacing:.3em;color:var(--accent);font-weight:700;margin:0 0 16px;text-transform:uppercase;}
+#panel-niche h1{font-family:'Yu Mincho','Hiragino Mincho ProN',serif;font-size:clamp(28px,4.6vw,44px);line-height:1.32;font-weight:600;margin:0 0 18px;}
+#panel-niche .lead{font-size:16px;color:var(--ink-soft);max-width:710px;margin:0;}
+#panel-niche .lead b{color:var(--accent);font-weight:700;}
+#panel-niche .meta{margin-top:24px;display:flex;flex-wrap:wrap;gap:8px 20px;font-size:12.5px;color:var(--ink-soft);}
+#panel-niche .meta b{color:var(--accent);font-weight:700;}
+#panel-niche .availkey{margin:32px 0 0;display:flex;flex-wrap:wrap;gap:10px;}
+#panel-niche .ak{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;padding:6px 13px;border-radius:8px;border:1px solid var(--line);background:var(--card);font-weight:600;}
+#panel-niche .ak .sw{width:10px;height:10px;border-radius:50%;flex:none;}
+#panel-niche .sw-teal{background:var(--teal);}
+#panel-niche .sw-amber{background:var(--amber);}
+#panel-niche .sw-plum{background:var(--plum);}
+#panel-niche /* idea card */
+  .idea{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px 26px;margin:18px 0 0;border-top:4px solid var(--accent);position:relative;}
+#panel-niche .idea-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px;margin-bottom:4px;}
+#panel-niche .idea-no{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:700;}
+#panel-niche .idea-head h3{font-size:19px;margin:0;font-weight:700;flex:1 1 auto;}
+#panel-niche .avail{font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap;}
+#panel-niche .a-teal{background:var(--teal-soft);color:#1f5546;}
+#panel-niche .a-amber{background:var(--amber-soft);color:#7a560f;}
+#panel-niche .a-plum{background:var(--plum-soft);color:#5e2f52;}
+#panel-niche .idea-tag{font-size:12px;color:var(--ink-soft);margin:0 0 14px;}
+#panel-niche .idea-tag .cat{font-family:var(--mono);color:var(--accent);}
+#panel-niche .block{margin-top:13px;}
+#panel-niche .block .bt{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--accent);text-transform:uppercase;margin-bottom:3px;}
+#panel-niche .block p{margin:0;font-size:14px;color:var(--ink-soft);}
+#panel-niche .block.source p{font-size:13px;}
+#panel-niche .block.source a{color:var(--teal);font-weight:600;text-decoration:none;border-bottom:1px solid transparent;word-break:break-all;}
+#panel-niche .block.source a:hover{border-bottom-color:var(--teal);}
+#panel-niche .insight{margin-top:14px;padding:12px 16px;background:var(--accent-soft);border-radius:8px;font-size:13.5px;color:#6e3019;}
+#panel-niche .insight b{color:var(--accent);}
+#panel-niche .grid2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:13px;}
+@media(max-width:600px){#panel-niche .grid2{grid-template-columns:1fr;}}
+#panel-niche /* section divider */
+  .divider{margin:48px 0 8px;}
+#panel-niche .divider h2{font-family:'Yu Mincho',serif;font-size:23px;font-weight:600;margin:0 0 4px;color:var(--ink);}
+#panel-niche .divider p{margin:0;font-size:13.5px;color:var(--ink-soft);}
+#panel-niche .divider .ico{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:700;letter-spacing:.1em;}
+#panel-niche /* caution box */
+  .caution{margin:20px 0 0;padding:18px 22px;border-radius:12px;background:var(--plum-soft);border-left:4px solid var(--plum);}
+#panel-niche .caution h4{margin:0 0 8px;font-size:14px;color:#5e2f52;font-weight:700;}
+#panel-niche .caution ul{margin:0;padding-left:20px;}
+#panel-niche .caution li{font-size:13px;color:#5e2f52;margin-bottom:6px;}
+#panel-niche /* method block */
+  .method{margin:50px 0 0;padding:32px 30px;border-radius:14px;background:var(--ink);color:#ece5dc;}
+#panel-niche .method .eyebrow{color:#d99b73;}
+#panel-niche .method h2{font-family:'Yu Mincho',serif;color:#fff;font-size:23px;margin:0 0 18px;font-weight:600;}
+#panel-niche .method p{color:#cbc3b8;font-size:14px;margin:0 0 14px;}
+#panel-niche .method h4{font-size:14px;color:#e8a877;margin:20px 0 7px;font-weight:700;}
+#panel-niche .method ul{margin:0;padding-left:20px;}
+#panel-niche .method li{color:#cbc3b8;font-size:14px;margin-bottom:8px;}
+#panel-niche .method strong{color:#fff;}
+#panel-niche footer{margin:52px 0 60px;padding-top:20px;border-top:1px solid var(--rule);font-size:12px;color:var(--ink-soft);}
+#panel-niche footer b{color:var(--ink);}
+@media(max-width:560px){#panel-niche header.hero{padding:40px 0 28px;}}
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="tabbar-outer">
+  <div class="tabbar">
+    <div class="brandtab">家賃予測モデル<span class="sub">Reference</span></div>
+    <div class="tabs" role="tablist" aria-label="資料の切り替え">
+<button class="tab" role="tab" id="tab-features" aria-controls="panel-features" aria-selected="true" data-target="features"><span class="tno">01</span>説明変数アイディア集</button>
+<button class="tab" role="tab" id="tab-sources" aria-controls="panel-sources" aria-selected="false" data-target="sources"><span class="tno">02</span>データ収集ソース</button>
+<button class="tab" role="tab" id="tab-niche" aria-controls="panel-niche" aria-selected="false" data-target="niche"><span class="tno">03</span>ニッチ収集アイディア</button>
+    </div>
+  </div>
+</div>
+<div class="panel active" id="panel-features" role="tabpanel" aria-labelledby="tab-features"><div class="wrap">
 
   <header class="hero">
     <p class="eyebrow">Feature Catalog for Rent Prediction</p>
@@ -321,7 +531,7 @@
       <li>スーパー/コンビニ/薬局まで距離</li>
       <li>学区・教育施設<span class="hint">小中学校・保育園の充実</span></li>
       <li>医療機関へのアクセス</li>
-      <li>治安指標<span class="hint">犯罪発生率</span></li>
+      <li>治安指標<span class="hint">犯罪発生率。町丁目・罪種別の粒度／声かけ等の前兆事案</span></li>
       <li>公園・緑地</li>
       <li>嫌悪施設の近接<span class="hint">線路/幹線道路/墓地/斎場等</span></li>
       <li>騒音源・振動源からの距離</li>
@@ -406,7 +616,7 @@
       <div class="cat-num">09</div>
       <div class="cat-titles"><h3>居住者コミュニティ・ピア属性</h3><div class="en">Resident Community &amp; Peer Effect</div></div>
     </div>
-    <div class="cat-note prem">見落とされやすいが重要な軸。「誰が住んでいるか」自体が価値（同質性プレミアム）を生む。ハイエンド家賃の「スペックで説明できない上振れ」の正体であることが多い。取得困難なため代理変数化が前提。</div>
+    <div class="cat-note prem">見落とされやすいが重要な軸。「誰が住んでいるか」自体が価値（同質性プレミアム）を生む一方、建物内の事案歴（心理的瑕疵）は逆に大きな下押し要因になる。ハイエンド家賃の「スペックで説明できない上振れ」も、事故物件の「説明できない割安」も、この軸に宿る。取得困難なため代理変数化が前提。</div>
     <ul class="vars">
       <li class="soft">同建物内の分譲/賃貸比率</li>
       <li class="soft">同建物内の平均世帯年収帯</li>
@@ -417,6 +627,8 @@
       <li class="soft">居住者専用アプリ / 会員特典</li>
       <li class="soft">管理組合の活発度・修繕積立金の健全性</li>
       <li class="soft">周辺住民の属性<span class="hint">高級住宅街 / 文教地区 / 繁華街隣接</span></li>
+      <li class="soft">告知事項・心理的瑕疵<span class="hint">事故物件フラグ。事案種別×経過年数で段階化</span></li>
+      <li class="soft">同建物・近隣での事案歴<span class="hint">建物内の自殺/他殺/孤独死等（要配慮）</span></li>
     </ul>
   </section>
 
@@ -497,6 +709,486 @@
     全11カテゴリ・約150変数候補を網羅。設備人気度・足切り構造は公開の賃貸市場調査（人気設備ランキング等）の傾向を一般化して反映。実データのソース（ポータルサイト/自社データ等）に応じて、取得可能な変数セットへの絞り込みが次ステップ。
   </footer>
 
-</div>
+</div></div>
+<div class="panel" id="panel-sources" role="tabpanel" aria-labelledby="tab-sources" hidden><div class="wrap">
+
+  <header class="hero">
+    <p class="eyebrow">Data Sourcing Guide for Rent Prediction</p>
+    <h1>住宅 月額家賃 予測モデル<br>データ入手元ガイド</h1>
+    <p class="lead">説明変数カタログ（全11カテゴリ）の各変数を、実際にどこから取得できるかを整理したリファレンス。公的オープンデータ・民間ポータル・地図API・独自取得の4系統で、入手元・取得形式・コスト・法務上の注意を一覧化しています。</p>
+    <div class="meta">
+      <span><b>データ系統</b> 4分類</span>
+      <span><b>主要ソース</b> 約15</span>
+      <span><b>対象</b> 説明変数カタログ 11カテゴリ</span>
+    </div>
+
+    <div class="legend">
+      <div class="lg"><span class="tag"><span class="sw sw-gov"></span>公的オープンデータ</span><p>国・自治体が無償公開。価格相場・立地・防災・周辺施設の土台。多くがAPI/CSV対応。</p></div>
+      <div class="lg"><span class="tag"><span class="sw sw-portal"></span>民間ポータル</span><p>物件単位の設備・条件はここにしかない。規約・robots.txt遵守が大前提。</p></div>
+      <div class="lg"><span class="tag"><span class="sw sw-geo"></span>地図・地理API</span><p>住所→緯度経度、周辺施設までの距離・所要時間を算出。従量課金。</p></div>
+      <div class="lg"><span class="tag"><span class="sw sw-field"></span>独自取得・現地</span><p>サービス・ピア属性など公開データに無い情報。自社管理データや現地調査で補完。</p></div>
+    </div>
+  </header>
+
+  <!-- ===== 1. 公的 ===== -->
+  <section>
+    <h2 class="sec">① 公的オープンデータ ― 価格・立地・防災の土台</h2>
+    <p class="sec-sub">無償で再利用しやすく、モデルの骨格（エリア相場・座標・災害リスク）を担う。まずここを押さえる。</p>
+
+    <div class="src gov">
+      <div class="src-head"><h3>不動産情報ライブラリ</h3><span class="by">国土交通省</span><span class="badge b-free">無償</span><span class="badge b-api">API / CSV</span></div>
+      <p class="desc">旧「土地総合情報システム」の後継。2024年4月運用開始。価格・防災・都市計画・周辺施設のオープンデータを地図上で重ね合わせでき、掲載情報の一部はAPIで無償提供される。APIキーは申請ページから取得。</p>
+      <p class="gives"><b>取得できる主な変数 →</b> 不動産取引価格情報、成約価格情報（レインズ由来を匿名加工）、地価公示、都道府県地価調査、ハザード（洪水/土砂/津波/高潮/液状化）、災害履歴、小中学校・学区、保育園・幼稚園、医療機関、図書館、用途地域、人口集中地区(DID)、将来推計人口、駅別乗降客数</p>
+      <div class="src-links">
+        <a class="src-link" href="https://www.reinfolib.mlit.go.jp/" target="_blank" rel="noopener">サイトを開く <span class="arr">↗</span></a>
+        <a class="src-link" href="https://www.reinfolib.mlit.go.jp/help/apiManual/" target="_blank" rel="noopener">API利用マニュアル <span class="arr">↗</span></a>
+      </div>
+    </div>
+
+    <div class="src gov">
+      <div class="src-head"><h3>レインズ・マーケット・インフォメーション (RMI)</h3><span class="by">指定流通機構</span><span class="badge b-free">無償(閲覧)</span></div>
+      <p class="desc">成約価格ベースの相場確認。賃貸の成約価格や平均面積も扱われる。個別取引が特定されない形に加工済み。なお業者向けの本体「REINS」は有料・会員制。</p>
+      <p class="gives"><b>取得できる主な変数 →</b> 成約相場、平均面積、エリア別の価格水準（カテゴリ05の相場補正に有用）</p>
+      <div class="src-links">
+        <a class="src-link" href="https://www.contract.reins.or.jp/" target="_blank" rel="noopener">サイトを開く <span class="arr">↗</span></a>
+      </div>
+    </div>
+
+    <div class="src gov">
+      <div class="src-head"><h3>e-Stat / 国勢調査・住宅土地統計</h3><span class="by">総務省統計局</span><span class="badge b-free">無償</span><span class="badge b-api">API / CSV</span></div>
+      <p class="desc">地域メッシュ単位の人口動態・世帯年収・持ち家比率など。エリアの社会経済特性を数値で取り込む。</p>
+      <p class="gives"><b>取得できる主な変数 →</b> 人口動態（流入/流出）、エリア平均世帯年収、世帯構成、昼夜間人口（カテゴリ05・09の代理変数）</p>
+      <div class="src-links">
+        <a class="src-link" href="https://www.e-stat.go.jp/" target="_blank" rel="noopener">サイトを開く <span class="arr">↗</span></a>
+        <a class="src-link" href="https://www.e-stat.go.jp/api/" target="_blank" rel="noopener">API仕様 <span class="arr">↗</span></a>
+      </div>
+    </div>
+
+    <div class="src gov">
+      <div class="src-head"><h3>国土数値情報 / 各自治体オープンデータ</h3><span class="by">国土交通省・自治体</span><span class="badge b-free">無償</span></div>
+      <p class="desc">鉄道駅・路線、公共施設、土地利用、地形などのGISデータ。犯罪発生情報は警察庁・都道府県警のオープンデータが別途利用できる。</p>
+      <p class="gives"><b>取得できる主な変数 →</b> 駅・路線位置、地形・標高（坂の有無）、治安指標、公園・緑地、用途地域</p>
+      <div class="src-links">
+        <a class="src-link" href="https://nlftp.mlit.go.jp/ksj/" target="_blank" rel="noopener">国土数値情報DL <span class="arr">↗</span></a>
+        <a class="src-link" href="https://www.data.go.jp/" target="_blank" rel="noopener">データカタログ(DATA GO JP) <span class="arr">↗</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 2. ポータル ===== -->
+  <section>
+    <h2 class="sec">② 民間ポータル ― 物件単位の設備・条件</h2>
+    <p class="sec-sub">目的変数（個別物件の家賃）と、室内設備・間取り・契約条件は公的データに無く、ポータルが事実上の唯一の供給源。利用は規約・robots.txtの範囲内で。</p>
+
+    <div class="src portal">
+      <div class="src-head"><h3>SUUMO / LIFULL HOME'S / アットホーム 等</h3><span class="by">大手賃貸ポータル</span><span class="badge b-paid">規約確認必須</span></div>
+      <p class="desc">物件ごとの家賃・間取り・面積・築年数・設備フラグが揃う。一覧ページで取れる項目と、詳細ページまで辿らないと取れない項目がある点に注意。HTML構造変更で取得ロジックが壊れやすい。</p>
+      <p class="gives"><b>取得できる主な変数 →</b> 月額家賃（目的変数）、管理費、敷金礼金、間取り、専有面積、築年数、階数、構造、向き、駅徒歩分数、各種設備フラグ（バス・トイレ別/エアコン/オートロック/宅配ボックス等）、ペット可否、契約形態</p>
+      <div class="src-links">
+        <a class="src-link" href="https://suumo.jp/" target="_blank" rel="noopener">SUUMO <span class="arr">↗</span></a>
+        <a class="src-link" href="https://www.homes.co.jp/" target="_blank" rel="noopener">LIFULL HOME'S <span class="arr">↗</span></a>
+        <a class="src-link" href="https://www.athome.co.jp/" target="_blank" rel="noopener">アットホーム <span class="arr">↗</span></a>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>取得時の遵守事項（法務・運用）</b>
+      <ul>
+        <li><b>利用規約</b>：自動収集の可否を必ず確認。禁止が明記されていれば取得しない。違反はアカウント停止等の対象。</li>
+        <li><b>robots.txt</b>：検索結果・詳細・内部APIなど一部パスにDisallowが指定されている場合がある。許可範囲内に限定する。各サイトの robots.txt は <a href="https://suumo.jp/robots.txt" target="_blank" rel="noopener" style="color:#8a4e1f;font-weight:700;">suumo.jp/robots.txt</a> のようにドメイン直下で確認できる。</li>
+        <li><b>アクセス間隔</b>：Crawl-delay の指定（例：数十秒）を尊重し、サーバ負荷をかけない。最低でも数秒間隔。</li>
+        <li><b>著作権・転載</b>：取得データの無断転載・再配布は権利侵害になりうる。分析用途に留め、二次配布しない。</li>
+        <li><b>認証・CAPTCHA</b>：ログイン回避やCAPTCHA突破は不正アクセスとみなされうる。行わない。</li>
+        <li><b>代替手段</b>：規約上の懸念があれば、API提供や正規のデータ提供メニュー、提携・購入の有無を先に確認する。</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===== 3. 地図 ===== -->
+  <section>
+    <h2 class="sec">③ 地図・地理API ― 座標化と距離・時間の算出</h2>
+    <p class="sec-sub">ポータルの住所文字列を緯度経度に変換し、周辺施設までの距離・所要時間を特徴量化する。従量課金のため呼び出し回数の設計が重要。</p>
+
+    <div class="src geo">
+      <div class="src-head"><h3>Google Maps Platform</h3><span class="by">Google</span><span class="badge b-api">API</span><span class="badge b-paid">従量課金</span></div>
+      <p class="desc">住所→座標のジオコーディング、2点間の距離・徒歩/交通所要時間を取得。住所が丁目までの粗い表記のことが多いため、住所→座標の対応表を別テーブルで持ち、重複呼び出しを避けると課金を大幅に抑えられる。</p>
+      <p class="gives"><b>生成できる主な変数 →</b> 緯度・経度、最寄駅/スーパー/コンビニ/学校/医療機関までの距離・所要時間、都心までの到達時間</p>
+      <div class="src-links">
+        <a class="src-link" href="https://mapsplatform.google.com/" target="_blank" rel="noopener">公式サイト <span class="arr">↗</span></a>
+        <a class="src-link" href="https://developers.google.com/maps/documentation/geocoding" target="_blank" rel="noopener">Geocoding API <span class="arr">↗</span></a>
+      </div>
+    </div>
+
+    <div class="src geo">
+      <div class="src-head"><h3>地理院地図 / 国土地理院API</h3><span class="by">国土地理院</span><span class="badge b-free">無償</span></div>
+      <p class="desc">標高・地形データを無償取得。坂の有無・高低差や、海抜（浸水リスクの補助）に使える。ジオコーディングの無償代替としても部分的に利用可能。</p>
+      <p class="gives"><b>生成できる主な変数 →</b> 標高・高低差、地形区分（カテゴリ04・06の補助）</p>
+      <div class="src-links">
+        <a class="src-link" href="https://maps.gsi.go.jp/" target="_blank" rel="noopener">地理院地図 <span class="arr">↗</span></a>
+        <a class="src-link" href="https://www.gsi.go.jp/kiban/" target="_blank" rel="noopener">基盤地図情報 <span class="arr">↗</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 4. 独自 ===== -->
+  <section>
+    <h2 class="sec">④ 独自取得・現地 ― ソフト要因の補完</h2>
+    <p class="sec-sub">サービス・居住者属性・ブランドなど、公開データに無いソフト要因。自社管理データ、物件公式サイト、現地調査で補う。取得困難なため代理変数化が前提。</p>
+
+    <div class="src field">
+      <div class="src-head"><h3>自社・提携先の管理データ</h3><span class="by">管理会社 / オーナー</span><span class="badge b-care">要権利確認</span></div>
+      <p class="desc">入居者属性、法人契約比率、空室期間、更新実績など、運用しているからこそ持てる内部データ。最も精度が高いが、個人情報保護とデータ利用範囲の確認が必須。</p>
+      <p class="gives"><b>取得できる主な変数 →</b> 法人契約比率、入居者セグメント、空室期間、募集経過日数、審査基準（カテゴリ09・11）</p>
+    </div>
+
+    <div class="src field">
+      <div class="src-head"><h3>物件公式サイト / 分譲時パンフレット</h3><span class="by">デベロッパー等</span><span class="badge b-care">手作業中心</span></div>
+      <p class="desc">共用施設・コンシェルジュ・ブランド・管理形態など、ハイエンドの差別化要因。構造化されていないため、ブランド名・管理会社を代理変数として束ねるのが現実的。</p>
+      <p class="gives"><b>取得できる主な変数 →</b> 共用施設、ホスピタリティ、デベロッパー/シリーズ、分譲賃貸フラグ、管理形態（カテゴリ07・08・10）</p>
+    </div>
+
+    <div class="src field">
+      <div class="src-head"><h3>エネルギー・契約条件の公開情報</h3><span class="by">物件票 / 重要事項</span><span class="badge b-care">物件票から抽出</span></div>
+      <p class="desc">オール電化・ガス種別・ネット無料などは、ポータルの物件票やフリーワード欄に記載があることが多い。テキストからのフラグ抽出（キーワードマッチ）で特徴量化する。</p>
+      <p class="gives"><b>取得できる主な変数 →</b> オール電化、都市ガス/プロパン、ネット無料、断熱仕様（カテゴリ03・11）</p>
+    </div>
+  </section>
+
+  <!-- ===== mapping table ===== -->
+  <section>
+    <h2 class="sec">カテゴリ × 入手元 対応表</h2>
+    <p class="sec-sub">説明変数カタログの11カテゴリを、主たる入手元に対応づけたもの。色は4系統（緑＝公的／橙＝ポータル／青＝地図／紫＝独自）。</p>
+    <table class="map-table">
+      <thead>
+        <tr><th>カテゴリ</th><th>主たる入手元</th><th>補足</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="cat-no">01</span> 物件の基本属性</td>
+          <td><span class="pill p-portal">ポータル</span></td>
+          <td>家賃・面積・築年・間取り・構造。目的変数もここ。</td></tr>
+        <tr><td><span class="cat-no">02</span> 室内設備・仕様</td>
+          <td><span class="pill p-portal">ポータル</span></td>
+          <td>設備フラグは詳細ページや物件票のテキストから抽出。</td></tr>
+        <tr><td><span class="cat-no">03</span> エネルギー・光熱</td>
+          <td><span class="pill p-portal">ポータル</span><span class="pill p-field">物件票抽出</span></td>
+          <td>オール電化・ガス種別はフリーワード欄に記載が多い。</td></tr>
+        <tr><td><span class="cat-no">04</span> 立地・アクセス</td>
+          <td><span class="pill p-geo">地図API</span><span class="pill p-gov">公的</span></td>
+          <td>住所→座標→駅距離。標高は地理院。路線は国土数値情報。</td></tr>
+        <tr><td><span class="cat-no">05</span> 周辺環境・生活利便</td>
+          <td><span class="pill p-gov">公的</span><span class="pill p-geo">地図API</span></td>
+          <td>相場・学区・施設・防災はライブラリ。距離は地図API。</td></tr>
+        <tr><td><span class="cat-no">06</span> 災害・耐震・安全</td>
+          <td><span class="pill p-gov">公的</span><span class="pill p-portal">ポータル</span></td>
+          <td>ハザードはライブラリ。耐震・セキュリティ設備は物件票。</td></tr>
+        <tr><td><span class="cat-no">07</span> 共用施設</td>
+          <td><span class="pill p-portal">ポータル</span><span class="pill p-field">公式サイト</span></td>
+          <td>ジム・ラウンジ等。ハイエンドは公式サイトで補完。</td></tr>
+        <tr><td><span class="cat-no">08</span> ホスピタリティ・サービス</td>
+          <td><span class="pill p-field">独自・公式</span></td>
+          <td>公開データに乏しい。ブランド名を代理変数化。</td></tr>
+        <tr><td><span class="cat-no">09</span> 居住者コミュニティ・ピア属性</td>
+          <td><span class="pill p-field">自社データ</span><span class="pill p-gov">公的(代理)</span></td>
+          <td>最も取得困難。エリア統計＋自社管理データで近似。</td></tr>
+        <tr><td><span class="cat-no">10</span> ブランド・建物の格</td>
+          <td><span class="pill p-portal">ポータル</span><span class="pill p-field">独自</span></td>
+          <td>物件名・管理会社から導出。分譲賃貸フラグも有効。</td></tr>
+        <tr><td><span class="cat-no">11</span> 契約条件・付帯費用</td>
+          <td><span class="pill p-portal">ポータル</span></td>
+          <td>管理費・敷礼・契約形態・ネット無料。物件票から。</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ===== workflow ===== -->
+  <div class="flow">
+    <p class="eyebrow">Suggested Pipeline</p>
+    <h2>取得パイプラインの推奨手順</h2>
+
+    <div class="step"><div class="n">1</div><div class="b">
+      <h4>骨格を公的データで先に固める</h4>
+      <p>不動産情報ライブラリのAPIで、対象エリアの相場・ハザード・学区・施設を取得。これがモデルの土台になり、後工程の精度を底上げする。</p>
+    </div></div>
+    <div class="step"><div class="n">2</div><div class="b">
+      <h4>物件単位データを規約の範囲で収集</h4>
+      <p>ポータルから家賃・設備・契約条件を取得。利用規約とrobots.txtを確認し、アクセス間隔を空ける。取得日を必ず記録し、列名・単位を統一する。</p>
+    </div></div>
+    <div class="step"><div class="n">3</div><div class="b">
+      <h4>住所を座標化し、距離・時間を特徴量化</h4>
+      <p>地図APIで緯度経度と周辺施設までの距離・所要時間を生成。住所→座標の対応表を別持ちにして重複呼び出しを避け、課金を抑える。</p>
+    </div></div>
+    <div class="step"><div class="n">4</div><div class="b">
+      <h4>テキストからソフト要因をフラグ化</h4>
+      <p>物件票・フリーワード欄からオール電化・ネット無料・共用施設をキーワード抽出。ブランド名・管理会社をカテゴリ08〜10の代理変数として束ねる。</p>
+    </div></div>
+    <div class="step"><div class="n">5</div><div class="b">
+      <h4>結合し、欠損フラグごと特徴量化</h4>
+      <p>物件キー（ID・住所）で全系統を結合。取りにくい変数は欠損自体を特徴量にする。LightGBM等のツリー系なら欠損・非線形・交互作用をまとめて吸収できる。</p>
+    </div></div>
+
+    <p class="kick">まず押さえる最小構成は、<b>公的データ（相場・ハザード）＋ポータル（家賃・面積・築年・徒歩分数）＋地図API（座標・距離）</b>の3点。この骨格だけで説明力の大部分を確保できる。</p>
+  </div>
+
+  <footer>
+    <b>住宅 月額家賃 予測モデル｜データ入手元ガイド</b><br>
+    説明変数カタログ（全11カテゴリ）に対応するデータ供給源を4系統で整理。公的オープンデータの仕様・API提供状況、ポータル利用時の遵守事項は公開情報の傾向を一般化して反映。実際の利用にあたっては各サービスの最新の利用規約・robots.txt・ライセンス条件を必ず確認すること。
+  </footer>
+
+</div></div>
+<div class="panel" id="panel-niche" role="tabpanel" aria-labelledby="tab-niche" hidden><div class="wrap">
+
+  <header class="hero">
+    <p class="eyebrow">Niche Feature Ideas for Rent Modeling</p>
+    <h1>家賃予測<br>ニッチ変数の分析アイディア集</h1>
+    <p class="lead">「当たり前」の変数は他のモデルも使う。差がつくのは、<b>取りにくいが家賃に効く</b>ニッチ変数をどう取り込むか。治安・事故物件・嫌悪施設などを中心に、データの入手口・分析の切り口・家賃への効き方をアイディアとして広げます。</p>
+    <div class="meta">
+      <span><b>アイディア</b> 10本</span>
+      <span><b>軸</b> 入手口 × 分析の切り口 × 効き方</span>
+      <span><b>対象</b> 説明変数カタログのニッチ領域</span>
+    </div>
+    <div class="availkey">
+      <span class="ak"><span class="sw sw-teal"></span>オープンデータあり（CSV/API）</span>
+      <span class="ak"><span class="sw sw-amber"></span>取得に工夫が要る</span>
+      <span class="ak"><span class="sw sw-plum"></span>取得困難・要配慮</span>
+    </div>
+  </header>
+
+  <!-- ===== 治安 ===== -->
+  <div class="divider">
+    <span class="ico">THEME 01</span>
+    <h2>治安 ― 「町丁目」まで降りると効きが見える</h2>
+    <p>市区町村平均では薄まる。罪種別・町丁目単位まで降ろすと、同じ駅でも通り一本で変わる治安が家賃差として現れる。</p>
+  </div>
+
+  <div class="idea">
+    <div class="idea-head"><span class="idea-no">01</span><h3>町丁目別・罪種別の犯罪発生密度</h3><span class="avail a-teal">データあり</span></div>
+    <p class="idea-tag"><span class="cat">カテゴリ05/06</span> ／ 治安指標を「平均」でなく「粒度」で持つ</p>
+    <div class="block source"><div class="bt">入手口</div>
+      <p>警察庁の<a href="https://www.npa.go.jp/toukei/seianki/hanzaiopendatalink.html" target="_blank" rel="noopener">犯罪オープンデータ リンク集</a>から各都道府県警サイトへ。実データは都道府県警ごとに分散している点が要注意。たとえば警視庁は<a href="https://www.keishicho.metro.tokyo.lg.jp/about_mpd/jokyo_tokei/jokyo/ninchikensu.html" target="_blank" rel="noopener">町丁別・罪種別・手口別の認知件数</a>をCSV/XLSXで毎月公開。各都道府県のオープンデータカタログにも同じデータが載ることが多い。</p>
+    </div>
+    <div class="block"><div class="bt">分析の切り口</div>
+      <p>窃盗7手口（ひったくり・車上ねらい・自転車盗など）は発生場所付き。これを町丁目ポリゴンに集計し、人口・世帯数で割って「発生密度」に正規化する。物件の住所を同じ町丁目に紐づければ、立地プレミアムから独立した治安効果を切り出せる。</p>
+    </div>
+    <div class="insight"><b>効き方 →</b> 単身女性向けでは特に効く。セキュリティ設備（オートロック等）との交互作用を入れると、「治安が悪いエリアほどオートロックの価値が上がる」非線形が捉えられる。</div>
+  </div>
+
+  <div class="idea">
+    <div class="idea-head"><span class="idea-no">02</span><h3>前兆事案・声かけ・特殊詐欺の予兆</h3><span class="avail a-amber">取得に工夫</span></div>
+    <p class="idea-tag"><span class="cat">カテゴリ05</span> ／ 「事件」になる前の不安シグナル</p>
+    <div class="block source"><div class="bt">入手口</div>
+      <p>都道府県警の防犯マップ系。警視庁は<a href="https://www.keishicho.metro.tokyo.lg.jp/jiken_jiko/hassei/map_annai.html" target="_blank" rel="noopener">事件事故発生マップ</a>で、子供・女性への声かけ／つきまとい、特殊詐欺の予兆電話（アポ電）情報を地図公開。地図UIからの取得になるため、自治体オープンデータ版があればそちらを優先。</p>
+    </div>
+    <div class="block"><div class="bt">分析の切り口</div>
+      <p>認知件数（事後）より早く動く「体感治安」の代理変数。声かけ密度を特徴量化すると、刑法犯認知件数では拾えない「なんとなく不安なエリア」を数値化できる。</p>
+    </div>
+    <div class="insight"><b>効き方 →</b> ファミリー（特に子育て世帯）の忌避に効く。学区の良さ（プラス）と治安不安（マイナス）が同じエリアで打ち消し合う構造を分解できる。</div>
+  </div>
+
+  <!-- ===== 事故物件 ===== -->
+  <div class="divider">
+    <span class="ico">THEME 02</span>
+    <h2>事故物件・心理的瑕疵 ― 最も大きいニッチ割引</h2>
+    <p>家賃を2〜3割動かしうる強い変数。一方で取得・取り扱いに最も配慮が要る領域でもある。</p>
+  </div>
+
+  <div class="idea">
+    <div class="idea-head"><span class="idea-no">03</span><h3>「告知事項あり」フラグ（ポータル由来）</h3><span class="avail a-amber">取得に工夫</span></div>
+    <p class="idea-tag"><span class="cat">カテゴリ09/11</span> ／ 最も取得しやすい心理的瑕疵の代理</p>
+    <div class="block"><div class="bt">入手口</div>
+      <p>ポータルの物件票・フリーワード欄に出る「告知事項あり」「心理的瑕疵」「特別募集住宅」（UR）などのキーワード。物件本文からの抽出になるため、取得自体はポータル収集の延長で可能。ただし規約・robots.txtの範囲内で。</p>
+    </div>
+    <div class="block"><div class="bt">分析の切り口</div>
+      <p>テキストから告知フラグを立て、同一エリア・同一スペックの「告知なし」物件との価格差を推定する。フラグの有無だけでなく、文言の強さ（「告知事項あり」のみ vs 具体的記述）で段階を作ると効果の濃淡が見える。</p>
+    </div>
+    <div class="insight"><b>効き方 →</b> 心理的瑕疵物件は、同じ建物内や近隣の同条件物件と比べ、家賃が2〜3割ほど安く設定されることが多いとされる。事案の種類で割引幅が異なるのが要点（下の04へ）。</div>
+  </div>
+
+  <div class="idea">
+    <div class="idea-head"><span class="idea-no">04</span><h3>事案の種類 × 経過年数で割引を段階化</h3><span class="avail a-plum">要配慮</span></div>
+    <p class="idea-tag"><span class="cat">カテゴリ09</span> ／ 一律フラグでなく「濃淡」と「減衰」を持つ</p>
+    <div class="block source"><div class="bt">入手口・参照枠組み</div>
+      <p>国交省<a href="https://www.mlit.go.jp/tochi_fudousan_kensetsugyo/const/tochi_fudousan_kensetsugyo_const_tk3_000001_00061.html" target="_blank" rel="noopener">「宅地建物取引業者による人の死の告知に関するガイドライン」</a>が分析設計の土台。賃貸では告知義務の目安が「事案発生から概ね3年」とされ、これが価格回復のタイムラインと整合する。事故物件公示サイトは学術研究でデータ提供実績があるが、投稿型ゆえ正確性・網羅性に限界があり、二次利用は権利・名誉・プライバシーへの配慮が必須。</p>
+    </div>
+    <div class="block"><div class="bt">分析の切り口</div>
+      <p>事案種別で割引の初期値に差をつけ（孤独死＜自殺＜他殺の順に深くなる傾向）、そこから経過年数で減衰させる「時間減衰モデル」を組む。賃貸の3年目安は、減衰関数のパラメータの初期仮説に使える。</p>
+    </div>
+    <div class="insight"><b>効き方 →</b> 「事故物件フラグ」を0/1で持つより、<b>種別×経過年数の連続値</b>にした方が説明力が上がる。回復カーブそのものが分析対象になりうる。</div>
+    <div class="caution">
+      <h4>取り扱い上の必須配慮</h4>
+      <ul>
+        <li>個人（死亡者・遺族）が特定される情報は扱わない。氏名・部屋番号などは分析に不要。</li>
+        <li>投稿型サイトの情報は誤り・噂を含む。裏取りできないものは「不確実フラグ」として別扱いにする。</li>
+        <li>名誉毀損・財産価値侵害のリスクがあるため、特定物件の「事故物件認定」を公表・再配布しない。あくまで内部の価格分析に留める。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== 嫌悪施設・環境 ===== -->
+  <div class="divider">
+    <span class="ico">THEME 03</span>
+    <h2>嫌悪施設・環境ストレス ― 距離と方角で数値化</h2>
+    <p>「近い」だけでなく「どの方角に・どれだけ近いか」。地図データと組み合わせると一気に特徴量化できる。</p>
+  </div>
+
+  <div class="idea">
+    <div class="idea-head"><span class="idea-no">05</span><h3>嫌悪施設までの距離・可視性</h3><span class="avail a-teal">データあり</span></div>
+    <p class="idea-tag"><span class="cat">カテゴリ05</span> ／ 墓地・斎場・パチンコ・風俗・線路・幹線道路</p>
+    <div class="grid2">
+      <div class="block source"><div class="bt">入手口</div>
+        <p>国土数値情報・自治体オープンデータ（公共施設・土地利用）、地図APIの施設検索。鉄道・道路は<a href="https://nlftp.mlit.go.jp/ksj/" target="_blank" rel="noopener">国土数値情報</a>の路線データ。</p></div>
+      <div class="block"><div class="bt">分析の切り口</div>
+        <p>各物件から最寄りの嫌悪施設までの距離を算出。さらに「窓の向きに施設があるか（可視性）」まで入れると、同じ距離でも効きが変わる。</p></div>
+    </div>
+    <div class="insight"><b>効き方 →</b> 線路・幹線道路は騒音（マイナス）と利便性（プラス）が同居。距離の単調効果ではなく、U字や非線形になりやすく、ツリー系モデル向き。</div>
+  </div>
+
+  <div class="idea">
+    <div class="idea-head"><span class="idea-no">06</span><h3>騒音・日照・電波の環境ストレス</h3><span class="avail a-amber">取得に工夫</span></div>
+    <p class="idea-tag"><span class="cat">カテゴリ03/05</span> ／ 体感品質を物理量で近似</p>
+    <div class="grid2">
+      <div class="block"><div class="bt">入手口</div>
+        <p>標高・地形は<a href="https://maps.gsi.go.jp/" target="_blank" rel="noopener">地理院地図</a>。日照は方角×階数×周辺建物高から推定。携帯電波は通信各社のエリアマップが参考。</p></div>
+      <div class="block"><div class="bt">分析の切り口</div>
+        <p>幹線道路までの距離＋交通量で騒音を近似。南側の隣接建物高と所在階から「日照阻害スコア」を作る。物件票の「南向き」フラグを補正する役割。</p></div>
+    </div>
+    <div class="insight"><b>効き方 →</b> 「南向き」フラグだけでは拾えない実日照を近似でき、向きプレミアムの過大評価を補正できる。</div>
+  </div>
+
+  <!-- ===== ピア・コミュニティ ===== -->
+  <div class="divider">
+    <span class="ico">THEME 04</span>
+    <h2>ピア属性・需給の動き ― 公開データで「間接的に」掴む</h2>
+    <p>居住者属性は直接取れない。エリア統計と募集の動きから代理変数を作るのが現実解。</p>
+  </div>
+
+  <div class="idea">
+    <div class="idea-head"><span class="idea-no">07</span><h3>エリアの社会経済プロファイル</h3><span class="avail a-teal">データあり</span></div>
+    <p class="idea-tag"><span class="cat">カテゴリ09</span> ／ 「誰が住む街か」を統計で近似</p>
+    <div class="grid2">
+      <div class="block source"><div class="bt">入手口</div>
+        <p><a href="https://www.e-stat.go.jp/" target="_blank" rel="noopener">e-Stat</a>の国勢調査・住宅土地統計。町丁目〜メッシュ単位の世帯年収・持ち家比率・単身率・年齢構成。</p></div>
+      <div class="block"><div class="bt">分析の切り口</div>
+        <p>持ち家比率・平均世帯年収・昼夜間人口比を組み合わせ「エリアの格」を合成。物件単体では取れないピア属性の代理にする。</p></div>
+    </div>
+    <div class="insight"><b>効き方 →</b> ブランド・分譲賃貸フラグと併用すると、スペックで説明できない家賃の上振れ（同質性プレミアム）を吸収しやすい。</div>
+  </div>
+
+  <div class="idea">
+    <div class="idea-head"><span class="idea-no">08</span><h3>募集の「滞留」と価格改定の足跡</h3><span class="avail a-amber">取得に工夫</span></div>
+    <p class="idea-tag"><span class="cat">カテゴリ11</span> ／ 同じ物件を時系列で追う</p>
+    <div class="block"><div class="bt">入手口</div>
+      <p>ポータルを定点観測し、同一物件IDの掲載期間・家賃改定を記録（規約の範囲内・低頻度で）。取得日を必ず残すのが鍵。</p>
+    </div>
+    <div class="block"><div class="bt">分析の切り口</div>
+      <p>募集開始からの経過日数が長い＝強気価格の兆候。途中の値下げ幅は「適正家賃との乖離」を示す。掲載スナップショットを貯めると、自前の成約代理データになる。</p>
+    </div>
+    <div class="insight"><b>効き方 →</b> 募集滞留日数は、提示家賃が市場の受容ラインを超えているかの直接シグナル。予測の残差チェックにも使える。</div>
+  </div>
+
+  <!-- ===== 災害・将来 ===== -->
+  <div class="divider">
+    <span class="ico">THEME 05</span>
+    <h2>災害リスク・将来性 ― 値付けに織り込まれ始めた軸</h2>
+    <p>ハザードは無償で精緻に取れる。将来推計と組むと「これから効く」リスクも先取りできる。</p>
+  </div>
+
+  <div class="idea">
+    <div class="idea-head"><span class="idea-no">09</span><h3>ハザード×地形の複合リスクスコア</h3><span class="avail a-teal">データあり</span></div>
+    <p class="idea-tag"><span class="cat">カテゴリ06</span> ／ 単一ハザードでなく重ね合わせ</p>
+    <div class="grid2">
+      <div class="block source"><div class="bt">入手口</div>
+        <p><a href="https://www.reinfolib.mlit.go.jp/" target="_blank" rel="noopener">不動産情報ライブラリ</a>の洪水・土砂・津波・高潮・液状化＋災害履歴。標高・低地は<a href="https://maps.gsi.go.jp/" target="_blank" rel="noopener">地理院地図</a>。</p></div>
+      <div class="block"><div class="bt">分析の切り口</div>
+        <p>複数ハザードを重ねた合成リスクと、1階／低層階フラグの交互作用を作る。浸水想定×1階は割引が深くなりやすい。</p></div>
+    </div>
+    <div class="insight"><b>効き方 →</b> 近年は災害リスクが家賃・価格に織り込まれる傾向。所在階との交互作用で「同じ建物でも階によるリスク差」を表現できる。</div>
+  </div>
+
+  <div class="idea">
+    <div class="idea-head"><span class="idea-no">10</span><h3>将来人口・再開発による「伸びしろ」</h3><span class="avail a-amber">取得に工夫</span></div>
+    <p class="idea-tag"><span class="cat">カテゴリ05</span> ／ 現在値でなく方向（トレンド）を持つ</p>
+    <div class="grid2">
+      <div class="block source"><div class="bt">入手口</div>
+        <p>不動産情報ライブラリの将来推計人口・駅別乗降客数、自治体の都市計画・再開発情報。乗降客数は時系列で取得。</p></div>
+      <div class="block"><div class="bt">分析の切り口</div>
+        <p>将来人口の増減率、駅乗降客数のトレンド、再開発エリアフラグを「方向性の特徴量」にする。現在の相場に、伸びしろの先取り分を足す。</p></div>
+    </div>
+    <div class="insight"><b>効き方 →</b> 同じ現在相場でも、人口流入・再開発エリアは家賃が先行して上がる。静的な相場変数に動的トレンドを足すと、新築・築浅の強気家賃を説明しやすい。</div>
+  </div>
+
+  <!-- ===== method ===== -->
+  <div class="method">
+    <p class="eyebrow">How to Make Niche Features Pay Off</p>
+    <h2>ニッチ変数を「効かせる」ための方法論</h2>
+    <p>ニッチ変数は単独で投入しても弱い。効果は<strong>交互作用</strong>と<strong>粒度</strong>に宿る。当たり前の変数（面積・築年・徒歩分数・相場）を土台に、ニッチ変数を掛け合わせる設計が要点。</p>
+
+    <h4>1. 平均でなく粒度で持つ</h4>
+    <ul>
+      <li>市区町村平均は立地プレミアムに溶けて消える。<strong>町丁目・メッシュ単位</strong>まで降ろして初めて、通り一本の治安差・嫌悪施設の効きが残差として現れる。</li>
+    </ul>
+
+    <h4>2. 0/1フラグでなく濃淡と減衰を持たせる</h4>
+    <ul>
+      <li>事故物件は種別×経過年数の連続値に。嫌悪施設は距離×可視性に。<strong>強さと時間減衰</strong>を入れると説明力が跳ねる。</li>
+    </ul>
+
+    <h4>3. 交互作用で「条件付きの効き」を捉える</h4>
+    <ul>
+      <li>治安×セキュリティ設備、ハザード×所在階、学区×治安不安。<strong>LightGBM等のツリー系</strong>なら明示せずとも吸収するが、重要な交互作用は手で作ると解釈が効く。</li>
+    </ul>
+
+    <h4>4. 取りにくい変数は代理変数で束ねる</h4>
+    <ul>
+      <li>ピア属性はエリア統計＋ブランド＋分譲賃貸フラグで近似。サービス・共用施設は物件名・管理会社で代理。<strong>欠損自体も特徴量</strong>にする。</li>
+    </ul>
+
+    <h4>5. 自前で時系列を貯める</h4>
+    <ul>
+      <li>ポータルの定点観測で募集滞留・値下げ履歴を蓄積すれば、成約データに近い<strong>自前の教師信号</strong>になる。1回の収集より継続観測が効く。</li>
+    </ul>
+
+    <p style="margin-top:18px;border-top:1px solid rgba(255,255,255,.15);padding-top:16px;color:#a79f94;font-size:13px;">優先順位の目安：まず<strong>治安（町丁目）</strong>と<strong>告知事項フラグ</strong>──効きが大きく、データも比較的取りやすい。次に<strong>嫌悪施設距離</strong>と<strong>ハザード×階</strong>。<strong>事故物件の種別×減衰</strong>と<strong>募集滞留の時系列</strong>は、配慮と手間がかかるぶん差別化になる。</p>
+  </div>
+
+  <footer>
+    <b>家賃予測｜ニッチ変数の分析アイディア集</b><br>
+    説明変数カタログのニッチ領域について、入手口・分析の切り口・家賃への効き方を整理。治安データは都道府県警ごとに分散公開されている点、事故物件・心理的瑕疵の扱いは国交省ガイドラインを枠組みとし、個人情報・名誉・プライバシーへの配慮が前提となる点に留意。各データソースの最新の利用規約・ライセンスは利用時に必ず確認すること。
+  </footer>
+
+</div></div>
+<script>
+
+(function(){
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+  var panels = {};
+  tabs.forEach(function(t){ panels[t.dataset.target] = document.getElementById('panel-'+t.dataset.target); });
+  function select(target, focus){
+    tabs.forEach(function(t){
+      var on = t.dataset.target === target;
+      t.setAttribute('aria-selected', on ? 'true':'false');
+      var p = panels[t.dataset.target];
+      if(on){ p.classList.add('active'); p.removeAttribute('hidden'); }
+      else { p.classList.remove('active'); p.setAttribute('hidden',''); }
+      if(on && focus) t.focus();
+    });
+    if(history.replaceState) history.replaceState(null,'','#'+target);
+    window.scrollTo({top:0,behavior:'instant' in window ? 'instant':'auto'});
+  }
+  tabs.forEach(function(t,idx){
+    t.addEventListener('click', function(){ select(t.dataset.target,false); });
+    t.addEventListener('keydown', function(e){
+      var i = idx;
+      if(e.key==='ArrowRight'){ e.preventDefault(); select(tabs[(i+1)%tabs.length].dataset.target,true); }
+      else if(e.key==='ArrowLeft'){ e.preventDefault(); select(tabs[(i-1+tabs.length)%tabs.length].dataset.target,true); }
+      else if(e.key==='Home'){ e.preventDefault(); select(tabs[0].dataset.target,true); }
+      else if(e.key==='End'){ e.preventDefault(); select(tabs[tabs.length-1].dataset.target,true); }
+    });
+  });
+  // open from hash
+  var h = (location.hash||'').replace('#','');
+  if(h && panels[h]) select(h,false);
+})();
+
+</script>
 </body>
 </html>
