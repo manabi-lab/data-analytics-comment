@@ -1,0 +1,502 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>住宅月額家賃 予測モデル｜説明変数カタログ</title>
+<style>
+  :root{
+    --ink:#1a1d24;
+    --ink-soft:#4a4f5c;
+    --paper:#f6f4ef;
+    --card:#fffefb;
+    --line:#e2ddd2;
+    --rule:#cfc8ba;
+    --accent:#2f6f5e;      /* 深い青緑：データ・分析の落ち着き */
+    --accent-soft:#e7efeb;
+    --gold:#b8893b;        /* 価格プレミアムを示す差し色 */
+    --gold-soft:#f3ead9;
+    --rose:#a8475a;        /* 足切り・リスクの差し色 */
+    --rose-soft:#f3e3e6;
+    --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic',Meiryo,sans-serif;
+    line-height:1.75;
+    font-feature-settings:"palt";
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:0 24px;}
+
+  /* ---- header ---- */
+  header.hero{
+    padding:64px 0 40px;
+    border-bottom:2px solid var(--ink);
+  }
+  .eyebrow{
+    font-size:12px;letter-spacing:.32em;color:var(--accent);
+    font-weight:700;margin:0 0 18px;text-transform:uppercase;
+  }
+  h1{
+    font-family:'Yu Mincho','Hiragino Mincho ProN',serif;
+    font-size:clamp(30px,5vw,46px);
+    line-height:1.3;font-weight:600;margin:0 0 20px;letter-spacing:.01em;
+  }
+  .lead{font-size:16px;color:var(--ink-soft);max-width:680px;margin:0;}
+  .meta{
+    margin-top:28px;display:flex;flex-wrap:wrap;gap:8px 20px;
+    font-size:12.5px;color:var(--ink-soft);
+  }
+  .meta span{display:inline-flex;align-items:center;gap:6px;}
+  .meta b{color:var(--accent);font-weight:700;}
+
+  /* ---- legend ---- */
+  .legend{
+    margin:36px 0 8px;display:flex;flex-wrap:wrap;gap:10px;
+  }
+  .chip{
+    display:inline-flex;align-items:center;gap:7px;
+    font-size:12.5px;padding:6px 13px;border-radius:999px;
+    border:1px solid var(--line);background:var(--card);font-weight:600;
+  }
+  .dot{width:9px;height:9px;border-radius:50%;flex:none;}
+  .d-base{background:var(--accent);}
+  .d-cut{background:var(--rose);}
+  .d-prem{background:var(--gold);}
+  .d-soft{background:#6a5acd;}
+
+  /* ---- nav ---- */
+  nav.toc{
+    margin:40px 0 8px;padding:22px 26px;
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+  }
+  nav.toc h2{
+    font-size:12px;letter-spacing:.2em;color:var(--ink-soft);
+    margin:0 0 14px;font-weight:700;
+  }
+  nav.toc ol{margin:0;padding:0;list-style:none;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:4px 22px;}
+  nav.toc a{
+    display:flex;gap:11px;align-items:baseline;
+    text-decoration:none;color:var(--ink);font-size:14px;
+    padding:5px 0;border-bottom:1px dotted transparent;
+  }
+  nav.toc a:hover{border-bottom-color:var(--rule);color:var(--accent);}
+  nav.toc .num{
+    font-family:var(--mono);font-size:12px;color:var(--accent);
+    font-weight:700;flex:none;width:24px;
+  }
+
+  /* ---- section ---- */
+  section.cat{margin:52px 0 0;scroll-margin-top:20px;}
+  .cat-head{display:flex;gap:18px;align-items:flex-start;margin-bottom:6px;}
+  .cat-num{
+    font-family:'Yu Mincho',serif;font-size:34px;line-height:1;
+    color:var(--accent);font-weight:600;flex:none;width:54px;
+    border-right:2px solid var(--rule);padding-right:14px;
+  }
+  .cat-titles h3{font-size:20px;margin:2px 0 4px;font-weight:700;letter-spacing:.01em;}
+  .cat-titles .en{
+    font-size:11.5px;letter-spacing:.18em;color:var(--ink-soft);
+    text-transform:uppercase;font-weight:600;
+  }
+  .cat-note{
+    margin:14px 0 18px;padding:11px 16px;font-size:13.5px;color:var(--ink-soft);
+    background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;
+  }
+  .cat-note.prem{background:var(--gold-soft);border-left-color:var(--gold);}
+  .cat-note.cut{background:var(--rose-soft);border-left-color:var(--rose);}
+
+  /* variable grid */
+  ul.vars{
+    list-style:none;margin:0;padding:0;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:7px;
+  }
+  ul.vars li{
+    background:var(--card);border:1px solid var(--line);border-radius:8px;
+    padding:10px 13px;font-size:13.5px;position:relative;padding-left:26px;
+  }
+  ul.vars li::before{
+    content:"";position:absolute;left:11px;top:16px;
+    width:6px;height:6px;border-radius:50%;background:var(--accent);
+  }
+  ul.vars li.cut::before{background:var(--rose);}
+  ul.vars li.prem::before{background:var(--gold);}
+  ul.vars li.soft::before{background:#6a5acd;}
+  ul.vars li .hint{display:block;font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+
+  .full{grid-column:1/-1;}
+
+  /* ---- modeling block ---- */
+  .model{
+    margin:60px 0 0;padding:34px 32px;border-radius:14px;
+    background:var(--ink);color:#ece8df;
+  }
+  .model .eyebrow{color:#8fc4b4;}
+  .model h3{
+    font-family:'Yu Mincho',serif;color:#fff;font-size:23px;
+    margin:0 0 22px;font-weight:600;
+  }
+  .model h4{font-size:15px;color:#f0c97a;margin:24px 0 8px;font-weight:700;}
+  .model p{color:#cdc8bd;font-size:14px;margin:0 0 12px;}
+  .model ul{margin:8px 0 0;padding-left:20px;}
+  .model li{color:#cdc8bd;font-size:14px;margin-bottom:7px;}
+  .model strong{color:#fff;}
+
+  /* effect table */
+  table{width:100%;border-collapse:collapse;margin:18px 0 0;font-size:13px;}
+  table th,table td{text-align:left;padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.13);}
+  table th{color:#8fc4b4;font-weight:700;font-size:11.5px;letter-spacing:.08em;}
+  table td{color:#d6d1c6;vertical-align:top;}
+  table td:first-child{color:#fff;font-weight:600;white-space:nowrap;}
+
+  /* ---- footer ---- */
+  footer{
+    margin:56px 0 60px;padding-top:22px;border-top:1px solid var(--rule);
+    font-size:12px;color:var(--ink-soft);
+  }
+  footer b{color:var(--ink);}
+
+  @media(max-width:560px){
+    .cat-num{font-size:26px;width:42px;padding-right:10px;}
+    .cat-head{gap:12px;}
+    header.hero{padding:44px 0 30px;}
+    ul.vars{grid-template-columns:1fr 1fr;}
+  }
+  @media(max-width:400px){
+    ul.vars{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <p class="eyebrow">Feature Catalog for Rent Prediction</p>
+    <h1>住宅 月額家賃 予測モデル<br>説明変数カタログ</h1>
+    <p class="lead">月額家賃を目的変数とする予測モデルのための、説明変数候補の網羅的リファレンス。一般物件からハイエンド物件まで、価格帯によって「効き方」が変わる構造を踏まえ、11カテゴリに整理しています。</p>
+    <div class="meta">
+      <span><b>目的変数</b> 月額家賃（管理費込／別は要設計）</span>
+      <span><b>カテゴリ数</b> 11</span>
+      <span><b>変数候補</b> 約150項目</span>
+    </div>
+
+    <div class="legend">
+      <span class="chip"><span class="dot d-base"></span>主効果・基本属性</span>
+      <span class="chip"><span class="dot d-cut"></span>足切り設備（ないと選外）</span>
+      <span class="chip"><span class="dot d-prem"></span>付加価値（あると上振れ）</span>
+      <span class="chip"><span class="dot d-soft"></span>ソフト要因（取得難・代理変数化）</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <h2>カテゴリ一覧</h2>
+    <ol>
+      <li><a href="#c1"><span class="num">01</span>物件の基本属性</a></li>
+      <li><a href="#c2"><span class="num">02</span>室内設備・仕様</a></li>
+      <li><a href="#c3"><span class="num">03</span>エネルギー・光熱</a></li>
+      <li><a href="#c4"><span class="num">04</span>立地・アクセス</a></li>
+      <li><a href="#c5"><span class="num">05</span>周辺環境・生活利便</a></li>
+      <li><a href="#c6"><span class="num">06</span>災害・耐震・安全</a></li>
+      <li><a href="#c7"><span class="num">07</span>共用施設</a></li>
+      <li><a href="#c8"><span class="num">08</span>ホスピタリティ・サービス</a></li>
+      <li><a href="#c9"><span class="num">09</span>居住者コミュニティ・ピア属性</a></li>
+      <li><a href="#c10"><span class="num">10</span>ブランド・建物の格</a></li>
+      <li><a href="#c11"><span class="num">11</span>契約条件・付帯費用</a></li>
+    </ol>
+  </nav>
+
+  <!-- 01 -->
+  <section class="cat" id="c1">
+    <div class="cat-head">
+      <div class="cat-num">01</div>
+      <div class="cat-titles"><h3>物件の基本属性</h3><div class="en">Property Fundamentals</div></div>
+    </div>
+    <div class="cat-note">家賃の主効果を担う中核変数群。面積・築年数・所在階の3つで説明力の大部分を占める。面積・間取り・部屋数は相互相関が高く、多重共線性に注意。</div>
+    <ul class="vars">
+      <li>専有面積（㎡）<span class="hint">最も影響力が大きい単一変数</span></li>
+      <li>間取り<span class="hint">1K / 1LDK / 2DK / 3LDK 等</span></li>
+      <li>部屋数</li>
+      <li>建物種別<span class="hint">マンション/アパート/戸建/テラスハウス</span></li>
+      <li>構造<span class="hint">RC / SRC / 鉄骨 / 木造</span></li>
+      <li>築年数（または築年）</li>
+      <li>総階数</li>
+      <li>所在階<span class="hint">高層階プレミアム</span></li>
+      <li>方角・向き<span class="hint">日当たり（南向き等）</span></li>
+      <li>角部屋か否か</li>
+      <li>専有面積に対するバルコニー比率</li>
+      <li>天井高</li>
+      <li>梁の出っ張り・柱の食い込み<span class="hint">有効面積感に影響</span></li>
+      <li>採光面の数<span class="hint">2面採光 / 3面採光</span></li>
+      <li>窓の数・大きさ</li>
+      <li>リフォーム/リノベ履歴</li>
+    </ul>
+  </section>
+
+  <!-- 02 -->
+  <section class="cat" id="c2">
+    <div class="cat-head">
+      <div class="cat-num">02</div>
+      <div class="cat-titles"><h3>室内設備・仕様</h3><div class="en">In-Unit Equipment</div></div>
+    </div>
+    <div class="cat-note cut">一般物件では「足切り設備」が下限を規定する。検索フィルタで弾かれると物件情報を見られる前に脱落するため、有無が大きく効く。3大こだわり条件＝「バス・トイレ別」「エアコン」「室内洗濯機置場」。</div>
+    <ul class="vars">
+      <li class="cut">エアコン有無・台数<span class="hint">全世帯で必須1位</span></li>
+      <li class="cut">バス・トイレ別</li>
+      <li class="cut">室内洗濯機置場<span class="hint">室内/室外の別</span></li>
+      <li class="cut">独立洗面台</li>
+      <li class="prem">温水洗浄便座</li>
+      <li class="prem">追い焚き機能<span class="hint">ファミリーで重要度上昇</span></li>
+      <li>浴室乾燥機</li>
+      <li>床暖房</li>
+      <li>キッチンコンロ口数</li>
+      <li>コンロ種別<span class="hint">IH / ガス</span></li>
+      <li>システムキッチン</li>
+      <li class="prem">食器洗い乾燥機</li>
+      <li>ディスポーザー</li>
+      <li>収納量<span class="hint">WIC / 各室収納</span></li>
+      <li>トランクルーム</li>
+      <li>バルコニー有無・面積</li>
+      <li>ルーフバルコニー / 専用庭</li>
+      <li class="prem">スマートロック / スマートホーム対応</li>
+      <li>アクセントクロス・内装グレード<span class="hint">内見時の印象</span></li>
+    </ul>
+  </section>
+
+  <!-- 03 -->
+  <section class="cat" id="c3">
+    <div class="cat-head">
+      <div class="cat-num">03</div>
+      <div class="cat-titles"><h3>エネルギー・光熱</h3><div class="en">Energy &amp; Utilities</div></div>
+    </div>
+    <div class="cat-note">家賃そのものでなく「実質光熱費」を通じて体感コストを補正する変数群。プロパンガスは光熱費が高く、家賃にマイナス補正されることもある。</div>
+    <ul class="vars">
+      <li>オール電化か否か</li>
+      <li>ガス種別<span class="hint">都市ガス / プロパン</span></li>
+      <li>エコキュート / 給湯方式</li>
+      <li>太陽光発電・蓄電池</li>
+      <li>電気容量（アンペア数）</li>
+      <li>断熱性能<span class="hint">複層ガラス / 内窓 / 断熱等級</span></li>
+      <li>遮音性能の高い窓<span class="hint">学生・幹線道路沿いで効く</span></li>
+    </ul>
+  </section>
+
+  <!-- 04 -->
+  <section class="cat" id="c4">
+    <div class="cat-head">
+      <div class="cat-num">04</div>
+      <div class="cat-titles"><h3>立地・アクセス</h3><div class="en">Location &amp; Access</div></div>
+    </div>
+    <div class="cat-note">面積と並ぶ主効果。徒歩分数は非線形（5分と6分の差は大きく、20分と21分は小さい）。緯度経度は空間的自己相関を吸収する補正変数として有用。</div>
+    <ul class="vars">
+      <li>最寄駅まで徒歩分数<span class="hint">非線形に効く</span></li>
+      <li>最寄路線・乗換利便性</li>
+      <li>複数路線利用可否</li>
+      <li>都心（主要ターミナル）への所要時間</li>
+      <li>緯度・経度<span class="hint">空間補正・地理座標</span></li>
+      <li>行政区・町丁目</li>
+      <li>バス便の要否・本数</li>
+      <li>前面道路の幅員・道路付け</li>
+      <li>私道 / 公道</li>
+      <li>土地の高低差・坂の有無</li>
+    </ul>
+  </section>
+
+  <!-- 05 -->
+  <section class="cat" id="c5">
+    <div class="cat-head">
+      <div class="cat-num">05</div>
+      <div class="cat-titles"><h3>周辺環境・生活利便</h3><div class="en">Neighborhood &amp; Amenity</div></div>
+    </div>
+    <div class="cat-note">エリア相場（地価公示・路線価）を取り込む変数群。同じ設備でもエリアの標準装備率によって差別化効果が変わるため、相場との交互作用が重要。</div>
+    <ul class="vars">
+      <li>エリア平均賃料相場<span class="hint">地価公示 / 路線価</span></li>
+      <li>周辺空室率</li>
+      <li>スーパー/コンビニ/薬局まで距離</li>
+      <li>学区・教育施設<span class="hint">小中学校・保育園の充実</span></li>
+      <li>医療機関へのアクセス</li>
+      <li>治安指標<span class="hint">犯罪発生率</span></li>
+      <li>公園・緑地</li>
+      <li>嫌悪施設の近接<span class="hint">線路/幹線道路/墓地/斎場等</span></li>
+      <li>騒音源・振動源からの距離</li>
+      <li>南側建物による日照阻害</li>
+      <li>眺望<span class="hint">オーシャン/夜景/山ビュー等</span></li>
+      <li>電波状況・携帯のつながりやすさ</li>
+      <li>再開発・将来性</li>
+      <li>人口動態<span class="hint">流入超過 / 流出</span></li>
+      <li>エリア平均世帯年収</li>
+    </ul>
+  </section>
+
+  <!-- 06 -->
+  <section class="cat" id="c6">
+    <div class="cat-head">
+      <div class="cat-num">06</div>
+      <div class="cat-titles"><h3>災害・耐震・安全</h3><div class="en">Disaster &amp; Safety</div></div>
+    </div>
+    <div class="cat-note cut">安全性プレミアム／ディスカウントを生む。新耐震・旧耐震の境界は1981年6月で、築年数とは別軸の効果を持つ。セキュリティ設備は「相場より高くても決まる」付加価値の上位常連。</div>
+    <ul class="vars">
+      <li>耐震基準<span class="hint">新耐震 / 旧耐震（1981年6月境界）</span></li>
+      <li>制震・免震構造</li>
+      <li class="cut">ハザードマップ上のリスク<span class="hint">浸水 / 土砂災害</span></li>
+      <li class="prem">オートロック</li>
+      <li class="prem">防犯カメラ</li>
+      <li class="prem">TVモニタ付インターホン</li>
+      <li>24時間ホームセキュリティ契約</li>
+      <li>非常用発電・防災備蓄</li>
+      <li>擁壁の有無・状態</li>
+    </ul>
+  </section>
+
+  <!-- 07 -->
+  <section class="cat" id="c7">
+    <div class="cat-head">
+      <div class="cat-num">07</div>
+      <div class="cat-titles"><h3>共用施設</h3><div class="en">Shared Facilities</div></div>
+    </div>
+    <div class="cat-note prem">高級帯で家賃が非線形に上昇する主因の一つ。一般物件ではほぼ存在しないため、価格帯の上限側を識別する変数として機能する。</div>
+    <ul class="vars">
+      <li class="prem">フィットネスジム</li>
+      <li class="prem">スパ / プール / サウナ</li>
+      <li class="prem">スカイラウンジ / 眺望デッキ</li>
+      <li class="prem">ルーフガーデン / 屋上庭園</li>
+      <li class="prem">ゲストルーム<span class="hint">来客宿泊</span></li>
+      <li class="prem">会議室 / ワークラウンジ<span class="hint">在宅勤務需要</span></li>
+      <li>コワーキングスペース</li>
+      <li>パーティルーム / キッチンスタジオ</li>
+      <li>シアタールーム / ライブラリー</li>
+      <li>キッズルーム / スタディルーム</li>
+      <li class="prem">宅配ボックス<span class="hint">EC拡大で標準装備化</span></li>
+      <li>エレベーター有無・基数</li>
+      <li>駐車場 / 駐輪場 / バイク置場</li>
+      <li>24時間ゴミ出し可<span class="hint">単身女性で人気</span></li>
+      <li>共用部のアート・デザイナー監修</li>
+      <li>内廊下 / 外廊下の別</li>
+    </ul>
+  </section>
+
+  <!-- 08 -->
+  <section class="cat" id="c8">
+    <div class="cat-head">
+      <div class="cat-num">08</div>
+      <div class="cat-titles"><h3>ホスピタリティ・サービス</h3><div class="en">Hospitality &amp; Service</div></div>
+    </div>
+    <div class="cat-note prem">ハイエンド物件の差別化はモノよりサービスに移る。データ取得が難しいため、ブランド名・管理形態を代理変数とする設計が現実的。</div>
+    <ul class="vars">
+      <li class="soft">コンシェルジュ / フロント<span class="hint">無し / 日中 / 24時間</span></li>
+      <li class="soft">バイリンガル対応<span class="hint">駐在員需要に直結</span></li>
+      <li class="soft">ハウスキーピング・クリーニング取次</li>
+      <li class="soft">朝食サービス<span class="hint">サービスアパートメント型</span></li>
+      <li class="soft">提携医療・健康相談</li>
+      <li class="soft">荷物一時預かり・宅配取次</li>
+      <li class="soft">車寄せ / ドアマン / バレー</li>
+      <li class="soft">管理形態<span class="hint">常駐 / 巡回 / 自主管理</span></li>
+    </ul>
+  </section>
+
+  <!-- 09 -->
+  <section class="cat" id="c9">
+    <div class="cat-head">
+      <div class="cat-num">09</div>
+      <div class="cat-titles"><h3>居住者コミュニティ・ピア属性</h3><div class="en">Resident Community &amp; Peer Effect</div></div>
+    </div>
+    <div class="cat-note prem">見落とされやすいが重要な軸。「誰が住んでいるか」自体が価値（同質性プレミアム）を生む。ハイエンド家賃の「スペックで説明できない上振れ」の正体であることが多い。取得困難なため代理変数化が前提。</div>
+    <ul class="vars">
+      <li class="soft">同建物内の分譲/賃貸比率</li>
+      <li class="soft">同建物内の平均世帯年収帯</li>
+      <li class="soft">法人契約比率<span class="hint">社宅利用＝信用度の代理</span></li>
+      <li class="soft">外国人居住比率<span class="hint">駐在員人気の指標</span></li>
+      <li class="soft">入居審査の厳格さ<span class="hint">年収倍率 / 保証会社グレード</span></li>
+      <li class="soft">居住者限定コミュニティ・イベント</li>
+      <li class="soft">居住者専用アプリ / 会員特典</li>
+      <li class="soft">管理組合の活発度・修繕積立金の健全性</li>
+      <li class="soft">周辺住民の属性<span class="hint">高級住宅街 / 文教地区 / 繁華街隣接</span></li>
+    </ul>
+  </section>
+
+  <!-- 10 -->
+  <section class="cat" id="c10">
+    <div class="cat-head">
+      <div class="cat-num">10</div>
+      <div class="cat-titles"><h3>ブランド・建物の格</h3><div class="en">Brand &amp; Prestige</div></div>
+    </div>
+    <div class="cat-note">ネームバリューによるプレミアム。カテゴリ08・09の取得困難なソフト要因を束ねる代理変数としても機能する（ブランド＝サービス水準・居住者層の代理）。</div>
+    <ul class="vars">
+      <li class="soft">分譲賃貸か否か<span class="hint">仕様グレードが高い傾向</span></li>
+      <li class="soft">デベロッパー / シリーズブランド</li>
+      <li class="soft">管理会社</li>
+      <li class="soft">デザイナーズ物件か否か</li>
+      <li>新築 / 築浅プレミアム</li>
+      <li>建物のランドマーク性</li>
+    </ul>
+  </section>
+
+  <!-- 11 -->
+  <section class="cat" id="c11">
+    <div class="cat-head">
+      <div class="cat-num">11</div>
+      <div class="cat-titles"><h3>契約条件・付帯費用</h3><div class="en">Contract &amp; Costs</div></div>
+    </div>
+    <div class="cat-note cut">表面家賃と実質負担の差を生む変数群。管理費・共益費は目的変数の定義（家賃に含めるか）と直結するため、最初に設計を固める必要がある。</div>
+    <ul class="vars">
+      <li class="full">管理費・共益費<span class="hint">目的変数の定義に直結。込/別の設計を最初に確定する</span></li>
+      <li>敷金 / 礼金</li>
+      <li>更新料</li>
+      <li>保証会社利用要否</li>
+      <li>フリーレント有無</li>
+      <li>契約形態<span class="hint">普通借家 / 定期借家（定借は相場安）</span></li>
+      <li>入居者属性の制限<span class="hint">女性限定 / 学生限定 / 法人</span></li>
+      <li>ペット可否 / 楽器相談 / 事務所利用</li>
+      <li>家具・家電付き</li>
+      <li>短期解約違約金</li>
+      <li>受入れ可否<span class="hint">生活保護 / 外国人 / 高齢者 → 需要層の広さ</span></li>
+      <li>ネット無料 / 高速回線<span class="hint">10年連続 人気設備1位</span></li>
+      <li>募集開始からの経過日数<span class="hint">長期化＝強気価格の兆候</span></li>
+      <li>即入居可否 / 空室期間</li>
+    </ul>
+  </section>
+
+  <!-- modeling -->
+  <div class="model">
+    <p class="eyebrow">Modeling Notes</p>
+    <h3>モデリング上の要点</h3>
+    <p>この変数群で本質的に重要なのは、<strong>同じ変数でも価格帯によって効き方が逆転する</strong>こと。一般物件では設備は「ないと選外」という<strong>減点法</strong>で効き、ハイエンドでは「サービス・人的環境・ブランド」という<strong>加点法</strong>で効く。単一の線形モデルでは捉えきれない。</p>
+
+    <table>
+      <thead><tr><th>論点</th><th>内容と対処</th></tr></thead>
+      <tbody>
+        <tr><td>多重共線性</td><td>面積・間取り・部屋数は高相関。いずれかに集約するか、ツリー系で吸収。</td></tr>
+        <tr><td>非線形性</td><td>徒歩分数・築年数は線形でない。決定木 / LightGBM が有効。</td></tr>
+        <tr><td>空間的自己相関</td><td>緯度経度・地域ダミーで「立地プレミアム」を吸収。</td></tr>
+        <tr><td>交互作用</td><td>「設備 × ターゲット層」「面積 × エリア」「築年数 × 構造」。同じオートロックでも標準装備エリアでは効かない。</td></tr>
+        <tr><td>カテゴリ変数処理</td><td>行政区・ブランドは Target Encoding が有効。</td></tr>
+        <tr><td>欠損の扱い</td><td>カテゴリ07〜09はスクレイピングで取りにくい。欠損フラグ自体を特徴量化する。</td></tr>
+      </tbody>
+    </table>
+
+    <h4>取得難易度で割り切る</h4>
+    <p>ソフト要因（カテゴリ08〜09）は欠損が多い。実装の現実解は次の通り。</p>
+    <ul>
+      <li><strong>取得しやすく効く変数を優先整備</strong> — オール電化、分譲賃貸、定借、ハザード、ネット無料など。</li>
+      <li><strong>取得困難なソフト要因は代理変数で束ねる</strong> — ブランド名・管理会社・分譲賃貸フラグが、サービス水準と居住者層の代理になる。</li>
+      <li><strong>価格帯でセグメント分割</strong>、または<strong>ツリー系モデルで非線形・交互作用を一括吸収</strong>。</li>
+    </ul>
+
+    <h4>まず押さえる4変数</h4>
+    <p>説明力の大部分は<strong>面積・築年数・駅徒歩分数・エリア相場</strong>で確保できる。残りの約150変数は、この骨格に精度を上乗せしていく位置づけで捉えるとよい。</p>
+  </div>
+
+  <footer>
+    <b>住宅 月額家賃 予測モデル｜説明変数カタログ</b><br>
+    全11カテゴリ・約150変数候補を網羅。設備人気度・足切り構造は公開の賃貸市場調査（人気設備ランキング等）の傾向を一般化して反映。実データのソース（ポータルサイト/自社データ等）に応じて、取得可能な変数セットへの絞り込みが次ステップ。
+  </footer>
+
+</div>
+</body>
+</html>
