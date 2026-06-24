@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -153,7 +152,7 @@
   </div>
 
   <h2>① 数式の予測（等間隔の階段）と実際（山型）</h2>
-  <p>「再生」を押すと、まず<span class="accent-o">オレンジの予測線</span>が等間隔に描かれ、次に<span class="accent-b">青い実際の家賃</span>が現れます。最後に各セグメントの差がポップアップします。</p>
+  <p>ボタンを<strong>1回押すと</strong><span class="accent-o">オレンジの予測線</span>が等間隔に描かれ、<strong>もう1回押すと</strong><span class="accent-b">青い実際の家賃</span>と各セグメントの差が現れます。</p>
 
   <div class="controls">
     <button id="play1" class="primary">▶ アニメーションを再生</button>
@@ -420,7 +419,7 @@
 </div>
 
 <script>
-// ===== Chart 1 animation =====
+// ===== Chart 1 animation (2段階ステップ式) =====
 (function() {
   const predLine = document.getElementById('predLine');
   const predDots = document.querySelectorAll('#predDots .pred-dot');
@@ -430,7 +429,12 @@
   const actualValues = document.querySelectorAll('#actualValues text');
   const diffPills = document.querySelectorAll('#diffPills g');
 
+  const playBtn = document.getElementById('play1');
+  // step: 0=未表示, 1=オレンジ表示済み, 2=青＋差分表示済み
+  let step = 0;
+
   function reset1() {
+    step = 0;
     predLine.classList.remove('go');
     actualLine.classList.remove('go');
     predDots.forEach(d => d.classList.remove('show'));
@@ -440,23 +444,45 @@
     diffPills.forEach(p => { p.classList.remove('label-show'); p.classList.add('label-hidden'); });
     void predLine.offsetWidth;
     void actualLine.offsetWidth;
+    playBtn.textContent = '▶ ① オレンジの予測線を表示';
   }
 
-  function play1() {
-    reset1();
+  // ステップ1：オレンジの予測線
+  function showPrediction() {
     setTimeout(() => predLine.classList.add('go'), 50);
     predDots.forEach((d, i) => setTimeout(() => d.classList.add('show'), 100 + i * 250));
     predLabels.forEach((l, i) => setTimeout(() => { l.classList.remove('label-hidden'); l.classList.add('label-show'); }, 600 + i * 200));
-    setTimeout(() => actualLine.classList.add('go'), 1500);
-    actualDots.forEach((d, i) => setTimeout(() => d.classList.add('show'), 1700 + i * 280));
-    actualValues.forEach((l, i) => setTimeout(() => { l.classList.remove('label-hidden'); l.classList.add('label-show'); }, 2000 + i * 250));
-    diffPills.forEach((p, i) => setTimeout(() => { p.classList.remove('label-hidden'); p.classList.add('label-show'); }, 3200 + i * 350));
   }
 
-  document.getElementById('play1').addEventListener('click', play1);
+  // ステップ2：青い実際の線＋差分
+  function showActual() {
+    setTimeout(() => actualLine.classList.add('go'), 50);
+    actualDots.forEach((d, i) => setTimeout(() => d.classList.add('show'), 200 + i * 280));
+    actualValues.forEach((l, i) => setTimeout(() => { l.classList.remove('label-hidden'); l.classList.add('label-show'); }, 500 + i * 250));
+    diffPills.forEach((p, i) => setTimeout(() => { p.classList.remove('label-hidden'); p.classList.add('label-show'); }, 1700 + i * 350));
+  }
+
+  function advance() {
+    if (step === 0) {
+      // まだ何も出ていない → オレンジを出す
+      reset1();
+      step = 1;
+      showPrediction();
+      playBtn.textContent = '▶ ② 青い実際の線を表示';
+    } else if (step === 1) {
+      // オレンジ表示済み → 青を出す
+      step = 2;
+      showActual();
+      playBtn.textContent = '✓ 表示完了';
+    }
+    // step === 2 のときは何もしない（リセットボタンで戻す）
+  }
+
+  playBtn.addEventListener('click', advance);
   document.getElementById('reset1').addEventListener('click', reset1);
-  // Autoplay on load
-  setTimeout(play1, 300);
+
+  // 初期状態は何も表示せず、ボタン待ち
+  reset1();
 })();
 
 // ===== Step section =====
@@ -566,17 +592,13 @@
 
 // ===== Chart 2 animation =====
 (function() {
-  // y = 130 - (value / 12000) * 80 ; bar height = abs((value / 12000) * 80)
-  // West: -4131 → bar grows downward
-  // East: -5473 → bar grows downward
-  // South: +11473 → bar grows upward
   const bars = [
     { rect: document.querySelector('#barWest .bar'), label: document.querySelector('#barWest .bar-label'), value: -4131 },
     { rect: document.querySelector('#barEast .bar'), label: document.querySelector('#barEast .bar-label'), value: -5473 },
     { rect: document.querySelector('#barSouth .bar'), label: document.querySelector('#barSouth .bar-label'), value: 11473 }
   ];
   const baseY = 130;
-  const scale = 80 / 6000; // 6k per 80px
+  const scale = 80 / 6000;
 
   function animateBar(bar, delay) {
     setTimeout(() => {
@@ -586,7 +608,6 @@
       const labelY = isPositive ? (targetY - 8) : (baseY + targetH + 18);
       const duration = 800;
       const start = performance.now();
-      const initialY = parseFloat(bar.rect.getAttribute('y'));
       function tick(now) {
         const t = Math.min(1, (now - start) / duration);
         const eased = 1 - Math.pow(1 - t, 3);
